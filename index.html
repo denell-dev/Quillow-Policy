@@ -6,7 +6,7 @@
 <title>Quillow — a cozy, private diary for iPhone and Mac</title>
 <meta name="description" content="Quillow is a cozy, private diary for iPhone and Mac: a paper page for every day — words, photos, a song, a place. It stays on your device. No accounts, no ads, no tracking.">
 <meta name="apple-itunes-app" content="app-id=6801047846">
-<meta name="theme-color" content="#3b2618">
+<meta name="theme-color" content="#1a100a">
 <meta property="og:title" content="Quillow — a cozy, private diary">
 <meta property="og:description" content="A paper page for every day — words, photos, a song, a place. It stays yours.">
 <meta property="og:image" content="https://quillowdiary.com/icon.png">
@@ -35,15 +35,20 @@
 }
 * { box-sizing:border-box; }
 html, body { margin:0; height:100%; }
-body { background:#3b2618; transition:background-color .6s ease; color:var(--ink); font-family:"Iowan Old Style", Georgia, "Times New Roman", serif;
+body { background:#1a100a; transition:background-color .6s ease; color:var(--ink); font-family:"Iowan Old Style", Georgia, "Times New Roman", serif;
        -webkit-font-smoothing:antialiased; overflow-x:hidden; }
 
 /* While the diary lies open, the browser's own bars (Safari tints them from the page's edges and
    theme-color) take the page's paper, not the desk's wood (Din, 29.10.2026). */
 html.reading, html.reading body { background:var(--paper); }
+/* On the desk the bars can't be see-through, so they take the dusk at the top of the scene
+   (the fog's darkest colour) and read as the room going dark, not as a brown band (Din, 28.10.2026). */
 
 /* The window onto the desk: it clips the (much larger) desk, so the page doesn't scroll into it. */
 .view { position:relative; overflow:hidden; min-height:100svh; perspective:1600px; }
+/* On the desk the wood goes on under Safari's floating bottom bar (the large viewport), instead
+   of stopping above it at a flat band. While reading, the page keeps the small one. */
+html:not(.reading) .view { min-height:100vh; min-height:100lvh; }
 /* While the camera is far, the room fades into the dusk beyond the lamp's light. */
 .fog { position:absolute; inset:0; pointer-events:none; z-index:10; opacity:0; transition:opacity 1.9s ease;
        background:linear-gradient(to bottom, rgba(20,12,7,.96), rgba(20,12,7,.55) 18%, rgba(20,12,7,0) 46%),
@@ -558,7 +563,7 @@ footer.links span { margin:0 7px; }
     function reading(on) {
       document.documentElement.classList.toggle('reading', on);
       var paper = getComputedStyle(document.documentElement).getPropertyValue('--paper').trim();
-      if (tint) tint.setAttribute('content', on ? paper : '#3b2618');
+      if (tint) tint.setAttribute('content', on ? paper : '#1a100a');
     }
     new MutationObserver(function () { reading(book.classList.contains('open')); })
       .observe(book, { attributes: true, attributeFilter: ['class'] });
