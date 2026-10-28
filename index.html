@@ -95,9 +95,18 @@ html:not(.reading) .view { min-height:100vh; min-height:100lvh; }
 @media (max-width:759px) {
   .book { transition:transform 1.9s cubic-bezier(.4,.05,.2,1); }
   .world:not(.far) .book { transform:translateZ(calc(6px - var(--thick))); }   /* even a shut cover's page (4px lower) stays above the desk */
-  .cup3d, .pencil3d, .leaf { transition:transform 1.9s cubic-bezier(.4,.05,.2,1); }
   .world:not(.far) .book > .cup3d, .world:not(.far) .book > .pencil3d, .world:not(.far) .book > .leaf {
     --lift:calc(var(--thick) - 4px); }
+  /* Once the camera is close, the book fills the screen and the desk lies only a few pixels below
+     the page. Some phones (an iPhone 12 Pro, in Telegram's browser) can't keep two planes that
+     close apart and drew stripes of desk over the page (Din's friend's video). So the desk and
+     the things on it are put away once the camera has arrived — nothing of them shows then anyway —
+     and come back the moment it starts to pull away. */
+  .world::before { transition:visibility 0s; }
+  .cup3d, .pencil3d, .leaf { transition:transform 1.9s cubic-bezier(.4,.05,.2,1), visibility 0s; }
+  .world:not(.far)::before { visibility:hidden; transition-delay:1.9s; }
+  .world:not(.far) .cup3d, .world:not(.far) .pencil3d, .world:not(.far) .leaf {
+    visibility:hidden; transition-delay:0s, 1.9s; }
 }
 .cover { transform:translateZ(calc(var(--thick) + 1px)); }   /* just above the page, never through it */
 .cover { isolation:isolate; }
