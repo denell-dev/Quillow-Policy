@@ -86,6 +86,9 @@ body { background:#3b2618; color:var(--ink); font-family:"Iowan Old Style", Geor
 @media (max-width:759px) {
   .book { transition:transform 1.9s cubic-bezier(.4,.05,.2,1); }
   .world:not(.far) .book { transform:translateZ(calc(1px - var(--thick))); }
+  .cup3d, .pencil3d, .leaf { transition:transform 1.9s cubic-bezier(.4,.05,.2,1); }
+  .world:not(.far) .book > .cup3d, .world:not(.far) .book > .pencil3d, .world:not(.far) .book > .leaf {
+    --lift:calc(var(--thick) + 1px); }
 }
 .cover { transform:translateZ(calc(var(--thick) + 1px)); }   /* just above the page, never through it */
 .cover { isolation:isolate; }
@@ -137,6 +140,7 @@ body { background:#3b2618; color:var(--ink); font-family:"Iowan Old Style", Geor
 /* The cup stands up: 18 rings stacked 3px apart make its wall, the rim and the coffee sit on top. */
 .world, .book { transform-style:preserve-3d; }
 .cup3d { position:absolute; left:-210px; top:6%; width:170px; height:170px; transform-style:preserve-3d;
+         --lift:2px; transform:translateZ(var(--lift));
          pointer-events:none; }
 .cup3d > * { position:absolute; border-radius:50%; }
 .cup3d .saucer { left:8px; top:8px; width:154px; height:154px;
@@ -165,7 +169,7 @@ body { background:#3b2618; color:var(--ink); font-family:"Iowan Old Style", Geor
    painted along the same faces. */
 .pencil3d { position:absolute; right:-118px; top:30%; width:0; height:0; transform-style:preserve-3d;
             /* turned about its own middle (150px down), lying clear of the book's side */
-            transform:translateY(150px) rotateZ(12deg) translateY(-150px) translateZ(9.53px); pointer-events:none; }
+            --lift:2px; transform:translateZ(var(--lift)) translateY(150px) rotateZ(12deg) translateY(-150px) translateZ(9.53px); pointer-events:none; }
 .pencil3d > i, .pencil3d > b { position:absolute; left:-5.50px; width:11px; backface-visibility:hidden; }
 .pencil3d > i { top:30px; height:270px; transform:rotateY(var(--p)) translateZ(9.53px);
   background:
@@ -191,7 +195,7 @@ body { background:#3b2618; color:var(--ink); font-family:"Iowan Old Style", Geor
         filter:drop-shadow(9px 14px 9px rgba(0,0,0,.38)) drop-shadow(2px 3px 2px rgba(0,0,0,.28)); }
 
 
-.leaf { width:150px; left:-175px; bottom:7%; transform:rotate(-24deg); }
+.leaf { --lift:2px; width:150px; left:-175px; bottom:7%; transform:translateZ(var(--lift)) rotate(-24deg); }
 
 /* ---- The page ---- */
 .page { --edge:12px;   /* how wide the stack of page edges shows on the right */
