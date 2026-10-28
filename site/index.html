@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quillow — a cozy, private diary for iPhone and Mac</title>
+<meta name="description" content="Quillow is a cozy, private diary for iPhone and Mac: a paper page for every day — words, photos, a song, a place. It stays on your device. No accounts, no ads, no tracking.">
+<meta name="apple-itunes-app" content="app-id=6801047846">
+<meta name="theme-color" content="#661F27">
+<meta property="og:title" content="Quillow — a cozy, private diary">
+<meta property="og:description" content="A paper page for every day — words, photos, a song, a place. It stays yours.">
+<meta property="og:image" content="https://quillowdiary.com/icon.png">
+<meta property="og:url" content="https://quillowdiary.com/">
+<link rel="icon" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<script>
+  // Quillow's Settings link to the policy as ".../?lang=xx" (and the old github.io address now
+  // lands here): send those straight on to the policy, in their language.
+  (function () {
+    var q = new URLSearchParams(location.search);
+    if (q.has('lang')) { location.replace('/privacy/' + location.search + location.hash); }
+  })();
+</script>
+<style>
+/* Quillow's own paper: Classic by day, Midnight by night. The cover is always the brand maroon. */
+:root {
+  --desk:#E6DCCB; --paper:#FAF5E3; --ink:#29262F; --soft:rgba(41,38,47,.5);
+  --rule:rgba(140,158,184,.42); --margin:rgba(204,89,89,.42); --accent:#661F27;
+  --cover:#661F27; --cover-ink:rgba(255,255,255,.92);
+  --step:34px;                      /* one ruled line: the text sits on it */
+}
+@media (prefers-color-scheme: dark) {
+  :root { --desk:#18161B; --paper:#29262E; --ink:#D1CCBF; --soft:rgba(209,204,191,.5);
+          --rule:rgba(140,148,168,.26); --margin:rgba(224,128,128,.30); --accent:#E0959C; }
+}
+* { box-sizing:border-box; }
+html, body { margin:0; height:100%; }
+body { background:#3b2618; color:var(--ink); font-family:"Iowan Old Style", Georgia, "Times New Roman", serif;
+       -webkit-font-smoothing:antialiased; overflow-x:hidden; }
+
+/* The window onto the desk: it clips the (much larger) desk, so the page doesn't scroll into it. */
+.view { position:relative; overflow:hidden; min-height:100svh; perspective:1600px; }
+/* While the camera is far, the room fades into the dusk beyond the lamp's light. */
+.fog { position:absolute; inset:0; pointer-events:none; z-index:10; opacity:0; transition:opacity 1.9s ease;
+       background:linear-gradient(to bottom, rgba(20,12,7,.96), rgba(20,12,7,.55) 18%, rgba(20,12,7,0) 46%),
+                  radial-gradient(ellipse 70% 60% at 50% 62%, transparent 50%, rgba(20,12,7,.55)); }
+.world.far ~ .fog { opacity:1; }
+
+/* ---- The desk, and the camera coming closer ----
+   The whole world (desk, things on it, the book) starts far and tilted, as if seen from a chair,
+   then glides in until the book fills the view; only then does the cover open. */
+.world { position:relative; min-height:100svh; transform-origin:50% 42%;
+         transition:transform 1.9s cubic-bezier(.4,.05,.2,1); }
+.world.far { transform:translateY(6vh) scale(.58) rotateX(50deg) rotateZ(14deg); }   /* from a chair, a little to the side */
+@media (min-width:760px) { .world.far { transform:translateY(4vh) scale(.78) rotateX(46deg) rotateZ(12deg); } }
+.world::before { /* the wooden desk — much larger than the screen, so it never ends while far away */
+  content:""; position:absolute; inset:-320vh -320vw; z-index:-2;
+  background:
+    radial-gradient(ellipse 55% 45% at 50% 38%, rgba(255,214,150,.20), transparent 70%),      /* the lamp */
+    radial-gradient(ellipse at 50% 50%, transparent 40%, rgba(0,0,0,.45) 100%),               /* dusk at the edges */
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='900' height='600'><filter id='w'><feTurbulence type='fractalNoise' stitchTiles='stitch' baseFrequency='0.004 0.11' numOctaves='3' seed='7'/><feColorMatrix values='0 0 0 0 0.45  0 0 0 0 0.28  0 0 0 0 0.16  0 0 0 0.55 0'/></filter><rect width='100%' height='100%' filter='url(%23w)'/></svg>"),
+    repeating-linear-gradient(0deg, transparent 0 618px, rgba(0,0,0,.30) 618px 620px, rgba(255,230,190,.06) 620px 622px),
+    linear-gradient(90deg, #6e4a30, #7a5236 30%, #6a452c 60%, #7b5438);
+  background-size:auto, auto, 1800px 1200px, auto, auto; }
+
+/* The book: the whole screen on a phone, a book on the desk on a wider one. */
+.book { --thick:64px; position:relative; min-height:100svh; perspective:2200px;
+        /* where it meets the desk: a thin dark contact line, a short close shadow, then the long
+           soft one cast away from the lamp */
+        box-shadow:0 0 1px 1px rgba(0,0,0,.55), 2px 3px 4px rgba(0,0,0,.50),
+                   10px 14px 18px rgba(0,0,0,.34), 28px 38px 54px rgba(0,0,0,.30); }
+@media (max-width:759px) { .book { --thick:38px; } }   /* a real diary is about an eighth as thick as it is wide */
+
+/* A real block of paper (Din, 28.10.2026): the page and the cover lie --thick above the desk, and
+   four sides go down to it — the spine on the left, the edges of the pages on the other three,
+   the cover boards' thin lines along them. Seen at an angle, the book has depth. */
+.page { transform:translateZ(calc(var(--thick) - 4px)); visibility:hidden; opacity:0;
+        transition:visibility 0s linear 1s, opacity 0s linear 1s; }
+/* Under a shut cover the page isn't drawn at all, and lies a little lower: its ruled lines used to
+   shimmer through the leather (Din's screenshots). It comes up the moment the cover starts to open. */
+.open .page { transform:translateZ(var(--thick)); visibility:visible; opacity:1; transition-delay:0s; }
+/* On a phone, once the camera is close and looks straight down, the book settles so its page
+   lies at the screen's own depth — otherwise perspective enlarges it and the tabs slide off the
+   edge. Phones only: the things on the desk settle with it, under the desk — out of sight there
+   anyway, but on a wider screen they must stay on the desk beside the book. */
+@media (max-width:759px) {
+  .book { transition:transform 1.9s cubic-bezier(.4,.05,.2,1); }
+  .world:not(.far) .book { transform:translateZ(calc(1px - var(--thick))); }
+}
+.cover { transform:translateZ(calc(var(--thick) + 1px)); }   /* just above the page, never through it */
+.cover { isolation:isolate; }
+/* Geometry of a hardback: two boards (--board thick) a little larger than the block of pages
+   between them (--over on three sides); the spine wraps the left. Each face is a plane turned
+   into place: right faces with rotateY(90deg) around the right edge, and so on. */
+.book { --board:5px; --over:6px; }
+.side, .pg, .fb, .bb, .back { position:absolute; pointer-events:none; }
+.back { inset:0; transform:translateZ(var(--board)); background:#45141a; }   /* the back board's inner face, seen past the pages */
+/* the page block, set in from the boards */
+.pg.r { top:var(--over); right:var(--over); height:calc(100% - 2 * var(--over)); width:calc(var(--thick) - 2 * var(--board));
+        transform-origin:right center; transform:translateZ(var(--board)) rotateY(90deg); }
+.pg.b { left:0; bottom:var(--over); width:calc(100% - var(--over)); height:calc(var(--thick) - 2 * var(--board));
+        transform-origin:center bottom; transform:translateZ(var(--board)) rotateX(-90deg); }
+.pg.t { left:0; top:var(--over); width:calc(100% - var(--over)); height:calc(var(--thick) - 2 * var(--board));
+        transform-origin:center top; transform:translateZ(var(--board)) rotateX(90deg); }
+/* the boards' edges, front (lit) and back (in shade) */
+.fb.r, .bb.r { top:0; right:0; height:100%; width:var(--board); transform-origin:right center; }
+.fb.b, .bb.b { left:0; bottom:0; width:100%; height:var(--board); transform-origin:center bottom; }
+.fb.t, .bb.t { left:0; top:0; width:100%; height:var(--board); transform-origin:center top; }
+.fb.r { transform:translateZ(calc(var(--thick) - var(--board))) rotateY(90deg); }
+.fb.b { transform:translateZ(calc(var(--thick) - var(--board))) rotateX(-90deg); }
+.fb.t { transform:translateZ(calc(var(--thick) - var(--board))) rotateX(90deg); }
+.bb.r { transform:rotateY(90deg); }  .bb.b { transform:rotateX(-90deg); }  .bb.t { transform:rotateX(90deg); }
+.fb { background:linear-gradient(90deg, #7a2a33, #5a1d24); }
+.fb.b, .fb.t { background:linear-gradient(180deg, #7a2a33, #521a21); }
+.bb { background:#3a1115; }
+.side.l { top:0; left:0; width:var(--thick); height:100%; transform-origin:left center; transform:rotateY(-90deg); }
+/* The page edges: not ruled stripes but paper — fine uneven lines, slightly darker towards the
+   boards where light can't reach, a little warm. */
+.pg.r { background:
+    linear-gradient(90deg, rgba(60,30,20,.22), rgba(0,0,0,0) 22%, rgba(0,0,0,0) 78%, rgba(60,30,20,.26)),
+    repeating-linear-gradient(90deg, #f3ecdb 0 1.6px, #e6dcc6 1.6px 2.2px, #f0e8d5 2.2px 3.5px, #ddd2ba 3.5px 4px); }
+.pg.b { background:
+    linear-gradient(180deg, rgba(60,30,20,.22), rgba(0,0,0,0) 22%, rgba(0,0,0,0) 78%, rgba(60,30,20,.30)),
+    linear-gradient(90deg, rgba(0,0,0,.04), rgba(0,0,0,.12)),
+    repeating-linear-gradient(180deg, #eee6d3 0 1.6px, #ddd2ba 1.6px 2.2px, #ebe2ce 2.2px 3.5px, #d5c9af 3.5px 4px); }
+.pg.t { background:
+    linear-gradient(0deg, rgba(60,30,20,.22), rgba(0,0,0,0) 22%, rgba(0,0,0,0) 78%, rgba(60,30,20,.26)),
+    repeating-linear-gradient(0deg, #f6efde 0 1.6px, #e8dfca 1.6px 2.2px, #f3ebd9 2.2px 3.5px, #e2d8c1 3.5px 4px); }
+/* The spine: the cover's leather, rounded by the light, with two raised bands. */
+.side.l { background:
+    linear-gradient(180deg, transparent 0 14%, rgba(255,220,200,.10) 14% 15%, rgba(0,0,0,.25) 15% 16%, transparent 16% 84%, rgba(255,220,200,.10) 84% 85%, rgba(0,0,0,.25) 85% 86%, transparent 86%),
+    linear-gradient(90deg, #2c0c10, #5a1d24 30%, #74303a 52%, #3d1015); }
+@media (min-width:760px) {
+  .book { max-width:720px; min-height:calc(100svh - 64px); margin:32px auto; border-radius:6px; }
+}
+
+/* The cup stands up: 18 rings stacked 3px apart make its wall, the rim and the coffee sit on top. */
+.world, .book { transform-style:preserve-3d; }
+.cup3d { position:absolute; left:-210px; top:6%; width:170px; height:170px; transform-style:preserve-3d;
+         pointer-events:none; }
+.cup3d > * { position:absolute; border-radius:50%; }
+.cup3d .saucer { left:8px; top:8px; width:154px; height:154px;
+                 background:radial-gradient(circle at 40% 35%, #fbf6ec, #e3d8c4 62%, #c4b496);
+                 box-shadow:14px 20px 22px rgba(0,0,0,.40), 3px 4px 4px rgba(0,0,0,.25); }
+.cup3d .saucer.top { left:30px; top:30px; width:110px; height:110px; box-shadow:none; transform:translateZ(3px);
+                     background:radial-gradient(circle at 45% 40%, #efe6d4, #d6c9b0); }
+.cup3d i { left:37px; top:37px; width:96px; height:96px; transform:translateZ(calc(var(--z) * 3px + 4px));
+           background:radial-gradient(circle at 35% 30%, #f6efe2, #d9ccb4 70%, #b9a98b);
+           box-shadow:inset -3px -4px 6px rgba(0,0,0,.12);
+           filter:brightness(calc(.80 + var(--z) * .012)); }   /* the wall darkens towards the desk */
+.cup3d i:first-of-type { box-shadow:4px 6px 8px rgba(0,0,0,.35); }
+.cup3d b { left:118px; top:62px; width:40px; height:44px; border:8px solid #e9e0cd; border-left-color:transparent;
+           transform:translateZ(calc(var(--z) * 3px + 4px)); box-sizing:border-box; }
+.cup3d .rim { left:37px; top:37px; width:96px; height:96px; transform:translateZ(58px);
+              background:radial-gradient(circle at 35% 30%, #fffaf1, #e6dcc8 80%, #c8b99c);
+              box-shadow:inset 0 0 0 1px rgba(255,255,255,.7); }
+.cup3d .coffee { position:absolute; left:8px; top:8px; width:80px; height:80px; border-radius:50%;
+                 background:radial-gradient(circle at 45% 42%, #a0703f 0, #6a3f1c 45%, #3a200b 100%);
+                 box-shadow:inset 0 4px 8px rgba(0,0,0,.55), inset 0 0 0 4px rgba(210,165,110,.25); }
+.cup3d .coffee::after { content:""; position:absolute; left:16px; top:14px; width:20px; height:10px; border-radius:50%;
+                        background:rgba(255,255,255,.28); transform:rotate(-30deg); }
+
+/* The pencil: six faces round its axis (r = 11px), lifted so the lowest face touches the desk;
+   the sharpened end is six triangles leaning in to the point; the ferrule and eraser are bands
+   painted along the same faces. */
+.pencil3d { position:absolute; right:-118px; top:30%; width:0; height:0; transform-style:preserve-3d;
+            /* turned about its own middle (150px down), lying clear of the book's side */
+            transform:translateY(150px) rotateZ(12deg) translateY(-150px) translateZ(9.53px); pointer-events:none; }
+.pencil3d > i, .pencil3d > b { position:absolute; left:-5.50px; width:11px; backface-visibility:hidden; }
+.pencil3d > i { top:30px; height:270px; transform:rotateY(var(--p)) translateZ(9.53px);
+  background:
+    linear-gradient(180deg, transparent 0 calc(100% - 36px),
+      #6f6a60 calc(100% - 36px), #e9e5dc calc(100% - 33px), #9f998c calc(100% - 30px), #ece8df calc(100% - 27px),
+      #a39d90 calc(100% - 24px), #e6e2d8 calc(100% - 21px), #8f897d calc(100% - 15px),
+      #d98e8e calc(100% - 15px), #e9a3a3 calc(100% - 8px), #c47878 100%),
+    linear-gradient(90deg, rgba(255,255,255,.10), rgba(0,0,0,.06)),
+    var(--c); }
+.pencil3d > b { top:0; height:31.48px; transform-origin:50% 100%;
+  transform:translateY(-1.48px) rotateY(var(--p)) translateZ(9.53px) rotateX(17.62deg);
+  clip-path:polygon(50% 0, 100% 100%, 0 100%);
+  background:linear-gradient(0deg, var(--w) 0 72%, #3a3532 72%); }
+.pshadow { position:absolute; left:-6px; top:8px; width:22px; height:294px; border-radius:11px;
+           transform:translateZ(-9.03px) translate(7px, 9px); background:rgba(0,0,0,.42); filter:blur(5px); }
+
+.pcap { position:absolute; left:-11px; top:290.47px; width:22px; height:19.05px;
+         transform:rotateX(90deg); clip-path:polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
+         background:radial-gradient(circle at 40% 35%, #e9a3a3, #b86c6c); }   /* the eraser's flat end */
+
+/* Things on the desk — seen while the camera is far; the book covers or crops them once close. */
+.prop { position:absolute; pointer-events:none;   /* shadows fall away from the lamp, as the book's do */
+        filter:drop-shadow(9px 14px 9px rgba(0,0,0,.38)) drop-shadow(2px 3px 2px rgba(0,0,0,.28)); }
+
+
+.leaf { width:150px; left:-175px; bottom:7%; transform:rotate(-24deg); }
+
+/* ---- The page ---- */
+.page { --edge:12px;   /* how wide the stack of page edges shows on the right */
+        position:relative; min-height:inherit; background:var(--paper); border-radius:inherit; overflow:hidden;
+        box-sizing:border-box; border:solid #4a161b; border-width:0 5px 0 0;   /* the cover's board, peeping out on the right */
+        padding:calc(env(safe-area-inset-top) + 34px) calc(var(--edge) + 18px) 28px 56px;
+        display:flex; flex-direction:column; }
+@media (min-width:760px) { .page { --edge:16px; } }
+.page::before { /* the red margin */
+  content:""; position:absolute; top:0; bottom:0; left:40px; width:1px; background:var(--margin); }
+
+/* The edges of all the pages beneath, stepping out on the right. */
+.fore { position:absolute; top:0; bottom:0; right:0; width:var(--edge); pointer-events:none; z-index:1;
+        box-shadow:inset 1px 0 0 rgba(0,0,0,.28);
+        background:linear-gradient(90deg, rgba(0,0,0,.16), rgba(0,0,0,0) 40%, rgba(0,0,0,.10)),
+                   repeating-linear-gradient(90deg, color-mix(in srgb, var(--paper) 94%, #000) 0 1.4px,
+                                                    color-mix(in srgb, var(--paper) 74%, #000) 1.4px 2px); }
+header.date { display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:22px; }
+.weekday { font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--soft); margin-bottom:2px; }
+.day { font-size:28px; line-height:1.15; }
+.close { background:none; border:0; padding:6px; margin:0 -6px 2px 0; cursor:pointer; color:var(--soft); }
+.close svg { width:22px; height:22px; display:block; }
+.close:hover { color:var(--ink); }
+
+.ruled { position:relative;
+         background-image:linear-gradient(to bottom, transparent calc(var(--step) - 1px), var(--rule) calc(var(--step) - 1px));
+         background-size:100% var(--step); background-position:0 -2px;
+         font-family:"Noteworthy", "Bradley Hand", "Segoe Print", "Comic Sans MS", cursive;
+         font-size:20px; line-height:var(--step); }
+.ruled p { margin:0; }
+.ruled .gap { height:var(--step); }
+.ruled a { color:var(--accent); text-decoration:underline; text-decoration-thickness:1px; text-underline-offset:5px; }
+
+/* The app's own icon, as on a phone's home screen (Din, 28.10.2026): a rounded tile with a little
+   depth — a soft light along its top edge, shade along the bottom, a shadow on the page — and its
+   name underneath. The writing flows around it. */
+.appicon { float:right; width:136px; margin:4px 0 14px 22px; text-align:center; }
+.appicon a { display:block; text-decoration:none; color:inherit; cursor:pointer; }
+.appicon .tile { position:relative; width:100%; aspect-ratio:1; border-radius:23%; overflow:hidden;
+                 box-shadow:0 10px 22px rgba(0,0,0,.28), 0 2px 5px rgba(0,0,0,.22);
+                 transition:transform .2s ease, box-shadow .2s ease; }
+.appicon a:hover .tile { transform:translateY(-2px); box-shadow:0 14px 26px rgba(0,0,0,.32), 0 3px 6px rgba(0,0,0,.22); }
+.appicon a:active .tile { transform:scale(.96); }   /* pressed, as an app icon is */
+.appicon .tile img { display:block; width:100%; height:100%; }
+.appicon .tile::after { content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+                        box-shadow:inset 0 2px 1px rgba(255,255,255,.22), inset 0 -3px 6px rgba(0,0,0,.28),
+                                   inset 0 0 0 1px rgba(255,255,255,.08);
+                        background:linear-gradient(160deg, rgba(255,255,255,.14), transparent 42%); }
+.appicon figcaption { margin-top:8px; font-family:-apple-system, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+                      font-size:13px; line-height:1.3; font-weight:600; color:var(--ink); opacity:.85; }
+@media (max-width:420px) { .appicon { width:96px; margin-left:14px; } .appicon figcaption { font-size:11px; } .ruled { font-size:19px; } }
+
+footer.links { margin-top:26px; font-size:13px; color:var(--soft); }
+footer.links a { color:var(--soft); }
+footer.links span { margin:0 7px; }
+
+
+/* ---- The tabs on the edge (NotebookTabs in the app) ---- */
+.tabs { position:absolute; left:0; top:calc(env(safe-area-inset-top) + 118px); z-index:3;
+        display:flex; flex-direction:column; gap:6px; }
+.tab { width:24px; min-height:56px; padding:0; border:0; border-radius:0 6px 6px 0; cursor:pointer;
+       background:var(--tone); opacity:.72; color:rgba(0,0,0,.55);
+       display:flex; align-items:center; justify-content:center;
+       box-shadow:1px 1px 1.5px rgba(0,0,0,.06); transition:width .2s ease, opacity .2s ease; }
+.tab:hover { opacity:.9; }
+.tab.on { width:27px; opacity:1; color:rgba(0,0,0,.78); box-shadow:1px 1px 3px rgba(0,0,0,.14); }
+.tab svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
+.tab .vname { writing-mode:vertical-rl; transform:rotate(180deg); font-size:11px; color:rgba(255,255,255,.92);
+              padding:12px 0; letter-spacing:.3px; }
+
+/* ---- The example pages ---- */
+.sheet { display:none; }
+.sheet.on { display:block; flex:1; animation:turn .45s ease; }
+@keyframes turn { from { opacity:0; transform:translateX(14px); } to { opacity:1; transform:none; } }
+.hand { font-family:"Noteworthy", "Bradley Hand", "Segoe Print", "Comic Sans MS", cursive; }
+
+.todo { display:flex; align-items:center; gap:10px; }
+.todo .ring { width:15px; height:15px; flex:none; border:1.6px solid currentColor; border-radius:50% 46% 52% 48%;
+              opacity:.75; position:relative; transform:rotate(-8deg); }
+.todo.done { opacity:.45; text-decoration:line-through; text-decoration-thickness:1px; }
+.todo.done .ring::after { content:""; position:absolute; left:3px; top:0; width:5px; height:9px;
+                          border:solid currentColor; border-width:0 1.6px 1.6px 0; transform:rotate(40deg); }
+.todo .when { margin-left:auto; font-family:"Iowan Old Style", Georgia, serif; font-size:12px; color:var(--soft); }
+.aside { color:var(--soft); }
+
+/* Films, books, places, people: the app's list — a small cover, the title with its stars (or a
+   heart), a quiet line of date and detail, and the first words of what was written. */
+.switch { display:flex; align-items:baseline; gap:5px; margin:-6px 0 6px; font-size:14px; }
+.switch b { font-weight:600; opacity:.9; }
+.switch em { font-style:normal; opacity:.4; }
+.switch small { font-size:11px; opacity:.45; }
+.switch span { opacity:.3; margin:0 2px; }
+.crow { display:flex; gap:12px; padding:12px 0; border-bottom:.5px solid color-mix(in srgb, var(--ink) 12%, transparent); }
+.thumb { width:44px; height:66px; flex:none; border-radius:4px; background:var(--s);
+         box-shadow:inset 0 0 0 .5px color-mix(in srgb, var(--ink) 15%, transparent); }
+.thumb.soft { border-radius:9px; }
+.thumb.pixel { overflow:hidden; background:none; }
+.thumb.photo { overflow:hidden; background:none; }
+.thumb.photo img { display:block; width:100%; height:100%; object-fit:cover; }
+.thumb.pix img { image-rendering:pixelated; }   /* little pixel posters, drawn for the site */
+.thumb.pixel svg { display:block; width:100%; height:100%; image-rendering:pixelated; }
+.cbody { flex:1; min-width:0; }
+.ctop { display:flex; align-items:baseline; gap:8px; }
+.ctitle { flex:1; min-width:0; font-size:17px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.meta { font-size:12px; color:var(--soft); margin-top:3px; }
+.preview { font-size:13px; font-style:italic; opacity:.7; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.stars { flex:none; font-size:11px; letter-spacing:1.5px; white-space:nowrap; }
+.stars i { font-style:normal; color:var(--accent); opacity:.35; }
+.stars i.on { opacity:.9; }
+.heart { color:var(--accent); opacity:.8; font-size:12px; }
+.board { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:16px; padding-top:4px; }
+.area { border-radius:10px; padding:12px 14px; background:color-mix(in srgb, var(--c) 16%, transparent);
+        border:1px solid color-mix(in srgb, var(--c) 40%, transparent); }
+.area h3 { margin:0 0 6px; font-weight:normal; font-size:13px; letter-spacing:1.5px; text-transform:uppercase; color:var(--c); }
+.area p { margin:4px 0; font-family:"Noteworthy", "Bradley Hand", "Segoe Print", "Comic Sans MS", cursive; font-size:16px; }
+@media (max-width:420px) { .board { gap:12px; } }
+
+/* The writing appears line by line once the book is open. */
+.reveal { opacity:0; transform:translateY(3px); transition:opacity .7s ease, transform .7s ease; }
+.open .reveal { opacity:1; transform:none; }
+
+/* ---- The cover: it swings open to the left around its spine, like the app's own ---- */
+.cover { position:absolute; inset:0; z-index:5; border-radius:inherit; cursor:pointer; overflow:hidden;
+         background:
+           radial-gradient(ellipse 55% 38% at 30% 20%, rgba(255,236,214,.16), transparent 70%),   /* the lamp, softly */
+           linear-gradient(118deg, rgba(255,255,255,.07), transparent 32%, transparent 62%, rgba(0,0,0,.24)),
+           url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='600'><filter id='m'><feTurbulence type='fractalNoise' stitchTiles='stitch' baseFrequency='.012' numOctaves='3' seed='2'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .35 -.05'/></filter><rect width='100%' height='100%' filter='url(%23m)'/></svg>"),
+           linear-gradient(90deg, rgba(0,0,0,.42), rgba(0,0,0,0) 20px, rgba(255,255,255,.07) 24px, rgba(0,0,0,.12) 30px, rgba(0,0,0,0) 38px),
+           url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='1100' height='1500'><filter id='g'><feTurbulence type='fractalNoise' stitchTiles='stitch' baseFrequency='.85' numOctaves='2' seed='4'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .22 0'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>"),
+           radial-gradient(circle at 50% 45%, rgba(255,255,255,.07), transparent 60%),
+           radial-gradient(circle at 50% 50%, transparent 35%, rgba(0,0,0,.30) 100%),
+           var(--cover);
+         background-size:auto, auto, 100% 100%, auto, 100% 100%, auto, auto;
+         background-repeat:no-repeat;   /* each texture is one image across the cover — no tiles, so no seams */
+         box-shadow: inset 0 0 0 1px rgba(255,225,205,.05), inset 1px 1px 0 rgba(255,225,205,.12),
+                     inset 0 0 22px rgba(0,0,0,.38), inset 0 -2px 4px rgba(0,0,0,.35);
+         transform-origin:left center; transition:transform 1s cubic-bezier(.45,.05,.3,1), opacity 1s ease;
+         backface-visibility:hidden; }
+.cover::after { /* the thin border, pressed into the leather */
+  content:""; position:absolute; inset:26px; border:1px solid rgba(255,255,255,.20); border-radius:3px;
+  box-shadow:0 1px 0 rgba(0,0,0,.45), inset 0 1px 0 rgba(0,0,0,.45); }
+.cover-text { position:sticky; top:0; height:min(100%, 100svh); display:flex; flex-direction:column;
+              align-items:center; justify-content:center; gap:12px; color:var(--cover-ink); text-align:center; }
+.cover-title { font-size:46px; font-weight:600; text-shadow:0 -1px 0 rgba(0,0,0,.55), 0 1px 0 rgba(255,255,255,.12); }
+.cover-sub { font-size:15px; letter-spacing:3.5px; text-transform:uppercase; opacity:.75;
+             animation:breathe 2.6s ease-in-out infinite; }
+@keyframes breathe { 0%,100% { opacity:.5; } 50% { opacity:.9; } }
+.cover-sub .mouse { display:none; }
+@media (hover:hover) and (pointer:fine) { .cover-sub .touch { display:none; } .cover-sub .mouse { display:inline; } }
+
+/* Saying "open me" when the book lies shut (Din, 28.10.2026): a warm glow breathes around it on
+   the desk, and on a Mac the cover lifts its edge a little under the pointer, like a real one. */
+.book::after { content:""; position:absolute; inset:-18px; border-radius:18px; pointer-events:none;
+               background:radial-gradient(closest-side, rgba(255,200,130,.0) 70%, rgba(255,200,130,.0));
+               box-shadow:0 0 40px 14px rgba(255,196,120,.0); opacity:0; transition:opacity .6s ease; }
+.book.waiting::after { opacity:1; animation:glow 2.6s ease-in-out infinite; }
+@keyframes glow { 0%,100% { box-shadow:0 0 30px 8px rgba(255,196,120,.18); } 50% { box-shadow:0 0 48px 18px rgba(255,196,120,.42); } }
+@media (hover:hover) and (pointer:fine) {
+  .book:not(.open) .cover:hover { transform:translateZ(calc(var(--thick) + 1px)) rotateY(-9deg); transition-duration:.45s; }
+}
+@media (prefers-reduced-motion: reduce) { .cover-sub, .book.waiting::after { animation:none; } }
+.open .cover { transform:translateZ(calc(var(--thick) + 1px)) rotateY(-105deg); opacity:0; pointer-events:none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cover, .reveal { transition:none; }
+}
+</style>
+</head>
+<body>
+<div class="view">
+<div class="world far" id="world">
+<div class="book" id="book">
+  <!-- A mug of tea, a pencil and a dry leaf beside the diary (drawn here, no photos). -->
+  <!-- A cup of coffee that stands on the desk: real 3D — stacked rings for its wall, so that
+       seen at an angle its side shows, and from above it's a cup seen from above. -->
+  <div class="cup3d" aria-hidden="true">
+    <div class="saucer"></div><div class="saucer top"></div>
+    <i style="--z:0"></i><i style="--z:1"></i><i style="--z:2"></i><i style="--z:3"></i><i style="--z:4"></i><i style="--z:5"></i><i style="--z:6"></i><i style="--z:7"></i><i style="--z:8"></i><i style="--z:9"></i><i style="--z:10"></i><i style="--z:11"></i><i style="--z:12"></i><i style="--z:13"></i><i style="--z:14"></i><i style="--z:15"></i><i style="--z:16"></i><i style="--z:17"></i><b style="--z:5"></b><b style="--z:6"></b><b style="--z:7"></b><b style="--z:8"></b><b style="--z:9"></b><b style="--z:10"></b><b style="--z:11"></b><b style="--z:12"></b><b style="--z:13"></b>
+    <div class="rim"><div class="coffee"></div></div>
+  </div>
+  <!-- A pencil lying on the desk: a real hexagonal prism (six painted faces), a sharpened cone of
+       wood with its graphite point, a metal ferrule and the eraser — each face lit by the lamp. -->
+  <div class="pencil3d" aria-hidden="true">
+    <div class="pshadow"></div>
+    <u class="pcap"></u>
+    <i style="--p:0deg;--c:#f2c75e"></i><b style="--p:0deg;--w:#efd6a8"></b><i style="--p:60deg;--c:#c78f2e"></i><b style="--p:60deg;--w:#cfae78"></b><i style="--p:120deg;--c:#a46f20"></i><b style="--p:120deg;--w:#b8945f"></b><i style="--p:180deg;--c:#7d5418"></i><b style="--p:180deg;--w:#9c7b4c"></b><i style="--p:240deg;--c:#d49c3f"></i><b style="--p:240deg;--w:#dcbd8a"></b><i style="--p:300deg;--c:#f7d47e"></i><b style="--p:300deg;--w:#f5e1bb"></b>
+  </div>
+  <!-- A maple leaf from the autumn walk (drawn here) -->
+  <svg class="prop leaf" viewBox="0 0 200 200" aria-hidden="true">
+    <defs>
+      <radialGradient id="maple" cx="50%" cy="56%" r="55%"><stop offset="0" stop-color="#f4b63e"/><stop offset=".4" stop-color="#e6762a"/><stop offset=".8" stop-color="#c8421f"/><stop offset="1" stop-color="#93291a"/></radialGradient>
+      <linearGradient id="mapleLight" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="rgba(255,235,190,.32)"/><stop offset=".5" stop-color="rgba(255,235,190,0)"/><stop offset="1" stop-color="rgba(60,10,0,.28)"/></linearGradient>
+    </defs>
+    <path d="M100 122 C101 146 106 170 116 192" stroke="#7a3a16" stroke-width="3.4" fill="none" stroke-linecap="round"/>
+    <path d="M70.3 112.0 L70.6 111.7 L70.9 111.5 L71.2 111.2 L70.3 111.0 L69.1 110.7 L67.9 110.3 L66.6 110.0 L65.3 109.6 L64.0 109.2 L62.7 108.7 L61.3 108.3 L59.9 107.8 L58.5 107.3 L57.1 106.7 L55.7 106.2 L56.4 105.9 L57.9 105.7 L59.4 105.6 L60.8 105.4 L62.3 105.3 L63.7 105.3 L65.1 105.2 L66.5 105.2 L67.8 105.2 L68.5 105.0 L67.7 104.5 L66.5 104.0 L64.7 103.2 L62.9 102.4 L61.0 101.6 L59.1 100.7 L57.2 99.7 L55.2 98.7 L53.3 97.7 L51.3 96.6 L49.3 95.5 L47.3 94.4 L45.3 93.2 L45.4 92.7 L47.7 93.0 L50.0 93.3 L52.2 93.7 L53.8 93.8 L53.0 93.0 L52.2 92.2 L51.4 91.4 L50.6 90.5 L49.8 89.6 L49.0 88.8 L48.2 87.9 L47.5 86.9 L46.7 86.0 L45.9 85.0 L45.2 84.1 L44.5 83.1 L43.7 82.1 L43.0 81.1 L42.3 80.0 L41.6 79.0 L40.9 77.9 L40.3 76.8 L39.6 75.7 L39.0 74.6 L38.3 73.5 L37.7 72.3 L37.1 71.1 L36.5 70.0 L35.9 68.8 L35.3 67.5 L34.7 66.3 L34.2 65.1 L33.7 63.8 L35.0 63.9 L36.4 64.1 L37.7 64.2 L39.1 64.4 L40.4 64.6 L41.7 64.8 L43.0 65.0 L44.3 65.2 L45.6 65.5 L46.8 65.8 L48.1 66.1 L49.3 66.4 L50.6 66.7 L51.8 67.0 L53.0 67.4 L54.2 67.7 L55.3 68.1 L56.5 68.5 L57.7 68.9 L58.8 69.3 L59.9 69.8 L61.0 70.2 L62.1 70.7 L63.2 71.1 L64.3 71.6 L65.3 72.1 L66.4 72.6 L67.4 73.1 L68.4 73.7 L67.8 72.2 L66.8 70.2 L65.7 68.1 L64.7 66.0 L65.2 65.8 L66.9 67.3 L68.7 68.9 L70.3 70.4 L72.0 72.0 L73.6 73.5 L75.1 75.1 L76.6 76.6 L78.0 78.1 L79.4 79.7 L80.6 80.9 L80.0 79.3 L79.4 77.7 L78.8 76.0 L78.2 74.3 L77.7 72.6 L77.2 70.8 L76.6 69.0 L77.4 69.4 L78.6 70.9 L79.8 72.3 L80.9 73.7 L80.7 72.4 L80.8 71.7 L81.8 72.9 L82.7 74.0 L83.6 75.2 L84.5 76.4 L85.4 77.5 L86.2 78.6 L85.8 76.7 L85.2 74.4 L84.7 72.1 L84.2 69.6 L83.7 67.2 L83.2 64.6 L82.8 62.1 L82.4 59.5 L82.1 56.8 L81.7 54.1 L81.5 51.4 L82.0 51.1 L83.2 53.5 L84.5 56.0 L85.6 58.4 L86.7 60.7 L86.9 59.4 L87.1 58.1 L87.3 56.8 L87.5 55.5 L87.7 54.2 L88.0 52.9 L88.3 51.6 L88.6 50.3 L88.9 49.0 L89.2 47.6 L89.6 46.3 L90.0 45.0 L90.4 43.6 L90.8 42.3 L91.3 40.9 L91.7 39.6 L92.2 38.2 L92.8 36.9 L93.3 35.5 L93.9 34.2 L94.5 32.8 L95.1 31.4 L95.7 30.1 L96.4 28.7 L97.0 27.4 L97.7 26.0 L98.5 24.7 L99.2 23.3 L100.0 22.0 L100.8 23.3 L101.5 24.7 L102.3 26.0 L103.0 27.4 L103.6 28.7 L104.3 30.1 L104.9 31.4 L105.5 32.8 L106.1 34.2 L106.7 35.5 L107.2 36.9 L107.8 38.2 L108.3 39.6 L108.7 40.9 L109.2 42.3 L109.6 43.6 L110.0 45.0 L110.4 46.3 L110.8 47.6 L111.1 49.0 L111.4 50.3 L111.7 51.6 L112.0 52.9 L112.3 54.2 L112.5 55.5 L112.7 56.8 L112.9 58.1 L113.1 59.4 L113.3 60.7 L114.4 58.4 L115.5 56.0 L116.8 53.5 L118.0 51.1 L118.5 51.4 L118.3 54.1 L117.9 56.8 L117.6 59.5 L117.2 62.1 L116.8 64.6 L116.3 67.2 L115.8 69.6 L115.3 72.1 L114.8 74.4 L114.2 76.7 L113.8 78.6 L114.6 77.5 L115.5 76.4 L116.4 75.2 L117.3 74.0 L118.2 72.9 L119.2 71.7 L119.3 72.4 L119.1 73.7 L120.2 72.3 L121.4 70.9 L122.6 69.4 L123.4 69.0 L122.8 70.8 L122.3 72.6 L121.8 74.3 L121.2 76.0 L120.6 77.7 L120.0 79.3 L119.4 80.9 L120.6 79.7 L122.0 78.1 L123.4 76.6 L124.9 75.1 L126.4 73.5 L128.0 72.0 L129.7 70.4 L131.3 68.9 L133.1 67.3 L134.8 65.8 L135.3 66.0 L134.3 68.1 L133.2 70.2 L132.2 72.2 L131.6 73.7 L132.6 73.1 L133.6 72.6 L134.7 72.1 L135.7 71.6 L136.8 71.1 L137.9 70.7 L139.0 70.2 L140.1 69.8 L141.2 69.3 L142.3 68.9 L143.5 68.5 L144.7 68.1 L145.8 67.7 L147.0 67.4 L148.2 67.0 L149.4 66.7 L150.7 66.4 L151.9 66.1 L153.2 65.8 L154.4 65.5 L155.7 65.2 L157.0 65.0 L158.3 64.8 L159.6 64.6 L160.9 64.4 L162.3 64.2 L163.6 64.1 L165.0 63.9 L166.3 63.8 L165.8 65.1 L165.3 66.3 L164.7 67.5 L164.1 68.8 L163.5 70.0 L162.9 71.1 L162.3 72.3 L161.7 73.5 L161.0 74.6 L160.4 75.7 L159.7 76.8 L159.1 77.9 L158.4 79.0 L157.7 80.0 L157.0 81.1 L156.3 82.1 L155.5 83.1 L154.8 84.1 L154.1 85.0 L153.3 86.0 L152.5 86.9 L151.8 87.9 L151.0 88.8 L150.2 89.6 L149.4 90.5 L148.6 91.4 L147.8 92.2 L147.0 93.0 L146.2 93.8 L147.8 93.7 L150.0 93.3 L152.3 93.0 L154.6 92.7 L154.7 93.2 L152.7 94.4 L150.7 95.5 L148.7 96.6 L146.7 97.7 L144.8 98.7 L142.8 99.7 L140.9 100.7 L139.0 101.6 L137.1 102.4 L135.3 103.2 L133.5 104.0 L132.3 104.5 L131.5 105.0 L132.2 105.2 L133.5 105.2 L134.9 105.2 L136.3 105.3 L137.7 105.3 L139.2 105.4 L140.6 105.6 L142.1 105.7 L143.6 105.9 L144.3 106.2 L142.9 106.7 L141.5 107.3 L140.1 107.8 L138.7 108.3 L137.3 108.7 L136.0 109.2 L134.7 109.6 L133.4 110.0 L132.1 110.3 L130.9 110.7 L129.7 111.0 L128.8 111.2 L129.1 111.5 L129.4 111.7 L129.7 112.0 L130.0 112.3 L130.3 112.5 L130.6 112.8 L130.7 113.1 L130.4 113.3 L130.1 113.6 L129.7 113.8 L129.4 114.1 L129.1 114.3 L128.8 114.5 L129.2 114.8 L129.9 115.1 L130.7 115.5 L131.5 115.9 L132.3 116.3 L133.1 116.7 L134.0 117.1 L134.8 117.5 L135.6 118.0 L136.5 118.4 L137.3 118.9 L138.2 119.4 L139.1 119.9 L139.0 120.3 L138.0 120.4 L137.2 120.6 L137.7 121.1 L138.2 121.5 L138.8 122.0 L139.3 122.5 L139.9 123.1 L140.4 123.6 L141.0 124.1 L141.5 124.7 L142.0 125.2 L142.5 125.8 L143.1 126.4 L143.6 127.0 L144.1 127.6 L144.6 128.2 L145.1 128.9 L145.6 129.5 L146.1 130.2 L146.6 130.8 L147.1 131.5 L147.6 132.2 L148.1 132.9 L148.5 133.6 L149.0 134.3 L149.4 135.1 L149.9 135.8 L150.3 136.5 L149.5 136.7 L148.6 136.8 L147.8 136.9 L146.9 136.9 L146.1 137.0 L145.2 137.1 L144.4 137.1 L143.5 137.1 L142.7 137.2 L141.9 137.2 L141.1 137.2 L140.3 137.2 L139.5 137.1 L138.7 137.1 L137.9 137.1 L137.1 137.0 L136.3 137.0 L135.5 136.9 L134.8 136.8 L134.0 136.7 L133.3 136.6 L132.5 136.5 L131.8 136.4 L131.1 136.3 L130.3 136.1 L129.6 136.0 L130.0 136.7 L130.5 137.6 L130.3 137.9 L129.4 137.5 L128.4 137.2 L127.5 136.8 L126.6 136.4 L125.8 136.0 L124.9 135.6 L124.1 135.2 L123.2 134.8 L122.4 134.4 L121.7 134.1 L120.9 133.7 L120.2 133.3 L119.7 133.1 L119.7 133.5 L119.7 133.9 L119.7 134.3 L119.7 134.7 L119.7 135.1 L119.7 135.5 L119.5 135.6 L119.1 135.5 L118.7 135.5 L118.3 135.4 L117.9 135.3 L117.5 135.2 L117.1 135.1 L116.8 135.1 L116.4 135.0 L116.0 134.9 L115.7 134.8 L115.4 134.8 L115.0 134.7 L114.7 134.7 L114.5 134.8 L114.3 134.9 L114.1 135.0 L113.9 135.1 L113.7 135.3 L113.5 135.4 L113.3 135.5 L113.1 135.6 L112.9 135.7 L112.7 135.8 L112.5 135.9 L112.3 136.1 L112.0 136.2 L111.8 136.3 L111.6 136.4 L111.4 136.5 L111.2 136.6 L111.0 136.7 L110.8 136.8 L110.5 136.9 L110.3 136.9 L110.1 137.0 L109.9 137.1 L109.7 137.2 L109.5 137.3 L109.2 137.4 L109.0 137.5 L108.8 137.5 L108.6 137.6 L108.3 137.7 L108.1 137.8 L107.9 137.8 L107.7 137.9 L107.4 138.0 L107.2 138.0 L107.0 138.1 L106.8 138.1 L106.5 138.2 L106.3 138.3 L106.1 138.3 L105.8 138.4 L105.6 138.4 L105.4 138.5 L105.2 138.5 L104.9 138.5 L104.7 138.6 L104.5 138.6 L104.2 138.7 L104.0 138.7 L103.8 138.7 L102.0 126.9 L101.8 126.9 L101.7 126.9 L101.6 126.9 L101.4 126.9 L101.3 126.9 L101.2 127.0 L101.0 127.0 L100.9 127.0 L100.8 127.0 L100.7 127.0 L100.5 127.0 L100.4 127.0 L100.3 127.0 L100.1 127.0 L100.0 127.0 L99.9 127.0 L99.7 127.0 L99.6 127.0 L99.5 127.0 L99.3 127.0 L99.2 127.0 L99.1 127.0 L99.0 127.0 L98.8 127.0 L98.7 126.9 L98.6 126.9 L98.4 126.9 L98.3 126.9 L98.2 126.9 L98.0 126.9 L96.2 138.7 L96.0 138.7 L95.8 138.7 L95.5 138.6 L95.3 138.6 L95.1 138.5 L94.8 138.5 L94.6 138.5 L94.4 138.4 L94.2 138.4 L93.9 138.3 L93.7 138.3 L93.5 138.2 L93.2 138.1 L93.0 138.1 L92.8 138.0 L92.6 138.0 L92.3 137.9 L92.1 137.8 L91.9 137.8 L91.7 137.7 L91.4 137.6 L91.2 137.5 L91.0 137.5 L90.8 137.4 L90.5 137.3 L90.3 137.2 L90.1 137.1 L89.9 137.0 L89.7 136.9 L89.5 136.9 L89.2 136.8 L89.0 136.7 L88.8 136.6 L88.6 136.5 L88.4 136.4 L88.2 136.3 L88.0 136.2 L87.7 136.1 L87.5 135.9 L87.3 135.8 L87.1 135.7 L86.9 135.6 L86.7 135.5 L86.5 135.4 L86.3 135.3 L86.1 135.1 L85.9 135.0 L85.7 134.9 L85.5 134.8 L85.3 134.7 L85.0 134.7 L84.6 134.8 L84.3 134.8 L84.0 134.9 L83.6 135.0 L83.2 135.1 L82.9 135.1 L82.5 135.2 L82.1 135.3 L81.7 135.4 L81.3 135.5 L80.9 135.5 L80.5 135.6 L80.3 135.5 L80.3 135.1 L80.3 134.7 L80.3 134.3 L80.3 133.9 L80.3 133.5 L80.3 133.1 L79.8 133.3 L79.1 133.7 L78.3 134.1 L77.6 134.4 L76.8 134.8 L75.9 135.2 L75.1 135.6 L74.2 136.0 L73.4 136.4 L72.5 136.8 L71.6 137.2 L70.6 137.5 L69.7 137.9 L69.5 137.6 L70.0 136.7 L70.4 136.0 L69.7 136.1 L68.9 136.3 L68.2 136.4 L67.5 136.5 L66.7 136.6 L66.0 136.7 L65.2 136.8 L64.5 136.9 L63.7 137.0 L62.9 137.0 L62.1 137.1 L61.3 137.1 L60.5 137.1 L59.7 137.2 L58.9 137.2 L58.1 137.2 L57.3 137.2 L56.5 137.1 L55.6 137.1 L54.8 137.1 L53.9 137.0 L53.1 136.9 L52.2 136.9 L51.4 136.8 L50.5 136.7 L49.7 136.5 L50.1 135.8 L50.6 135.1 L51.0 134.3 L51.5 133.6 L51.9 132.9 L52.4 132.2 L52.9 131.5 L53.4 130.8 L53.9 130.2 L54.4 129.5 L54.9 128.9 L55.4 128.2 L55.9 127.6 L56.4 127.0 L56.9 126.4 L57.5 125.8 L58.0 125.2 L58.5 124.7 L59.0 124.1 L59.6 123.6 L60.1 123.1 L60.7 122.5 L61.2 122.0 L61.8 121.5 L62.3 121.1 L62.8 120.6 L62.0 120.4 L61.0 120.3 L60.9 119.9 L61.8 119.4 L62.7 118.9 L63.5 118.4 L64.4 118.0 L65.2 117.5 L66.0 117.1 L66.9 116.7 L67.7 116.3 L68.5 115.9 L69.3 115.5 L70.1 115.1 L70.8 114.8 L71.2 114.5 L70.9 114.3 L70.6 114.1 L70.3 113.8 L69.9 113.6 L69.6 113.3 L69.3 113.1 L69.4 112.8 L69.7 112.5 L70.0 112.3 Z" fill="url(#maple)" stroke="#7d2512" stroke-width="1" stroke-linejoin="round"/>
+    <path d="M70.3 112.0 L70.6 111.7 L70.9 111.5 L71.2 111.2 L70.3 111.0 L69.1 110.7 L67.9 110.3 L66.6 110.0 L65.3 109.6 L64.0 109.2 L62.7 108.7 L61.3 108.3 L59.9 107.8 L58.5 107.3 L57.1 106.7 L55.7 106.2 L56.4 105.9 L57.9 105.7 L59.4 105.6 L60.8 105.4 L62.3 105.3 L63.7 105.3 L65.1 105.2 L66.5 105.2 L67.8 105.2 L68.5 105.0 L67.7 104.5 L66.5 104.0 L64.7 103.2 L62.9 102.4 L61.0 101.6 L59.1 100.7 L57.2 99.7 L55.2 98.7 L53.3 97.7 L51.3 96.6 L49.3 95.5 L47.3 94.4 L45.3 93.2 L45.4 92.7 L47.7 93.0 L50.0 93.3 L52.2 93.7 L53.8 93.8 L53.0 93.0 L52.2 92.2 L51.4 91.4 L50.6 90.5 L49.8 89.6 L49.0 88.8 L48.2 87.9 L47.5 86.9 L46.7 86.0 L45.9 85.0 L45.2 84.1 L44.5 83.1 L43.7 82.1 L43.0 81.1 L42.3 80.0 L41.6 79.0 L40.9 77.9 L40.3 76.8 L39.6 75.7 L39.0 74.6 L38.3 73.5 L37.7 72.3 L37.1 71.1 L36.5 70.0 L35.9 68.8 L35.3 67.5 L34.7 66.3 L34.2 65.1 L33.7 63.8 L35.0 63.9 L36.4 64.1 L37.7 64.2 L39.1 64.4 L40.4 64.6 L41.7 64.8 L43.0 65.0 L44.3 65.2 L45.6 65.5 L46.8 65.8 L48.1 66.1 L49.3 66.4 L50.6 66.7 L51.8 67.0 L53.0 67.4 L54.2 67.7 L55.3 68.1 L56.5 68.5 L57.7 68.9 L58.8 69.3 L59.9 69.8 L61.0 70.2 L62.1 70.7 L63.2 71.1 L64.3 71.6 L65.3 72.1 L66.4 72.6 L67.4 73.1 L68.4 73.7 L67.8 72.2 L66.8 70.2 L65.7 68.1 L64.7 66.0 L65.2 65.8 L66.9 67.3 L68.7 68.9 L70.3 70.4 L72.0 72.0 L73.6 73.5 L75.1 75.1 L76.6 76.6 L78.0 78.1 L79.4 79.7 L80.6 80.9 L80.0 79.3 L79.4 77.7 L78.8 76.0 L78.2 74.3 L77.7 72.6 L77.2 70.8 L76.6 69.0 L77.4 69.4 L78.6 70.9 L79.8 72.3 L80.9 73.7 L80.7 72.4 L80.8 71.7 L81.8 72.9 L82.7 74.0 L83.6 75.2 L84.5 76.4 L85.4 77.5 L86.2 78.6 L85.8 76.7 L85.2 74.4 L84.7 72.1 L84.2 69.6 L83.7 67.2 L83.2 64.6 L82.8 62.1 L82.4 59.5 L82.1 56.8 L81.7 54.1 L81.5 51.4 L82.0 51.1 L83.2 53.5 L84.5 56.0 L85.6 58.4 L86.7 60.7 L86.9 59.4 L87.1 58.1 L87.3 56.8 L87.5 55.5 L87.7 54.2 L88.0 52.9 L88.3 51.6 L88.6 50.3 L88.9 49.0 L89.2 47.6 L89.6 46.3 L90.0 45.0 L90.4 43.6 L90.8 42.3 L91.3 40.9 L91.7 39.6 L92.2 38.2 L92.8 36.9 L93.3 35.5 L93.9 34.2 L94.5 32.8 L95.1 31.4 L95.7 30.1 L96.4 28.7 L97.0 27.4 L97.7 26.0 L98.5 24.7 L99.2 23.3 L100.0 22.0 L100.8 23.3 L101.5 24.7 L102.3 26.0 L103.0 27.4 L103.6 28.7 L104.3 30.1 L104.9 31.4 L105.5 32.8 L106.1 34.2 L106.7 35.5 L107.2 36.9 L107.8 38.2 L108.3 39.6 L108.7 40.9 L109.2 42.3 L109.6 43.6 L110.0 45.0 L110.4 46.3 L110.8 47.6 L111.1 49.0 L111.4 50.3 L111.7 51.6 L112.0 52.9 L112.3 54.2 L112.5 55.5 L112.7 56.8 L112.9 58.1 L113.1 59.4 L113.3 60.7 L114.4 58.4 L115.5 56.0 L116.8 53.5 L118.0 51.1 L118.5 51.4 L118.3 54.1 L117.9 56.8 L117.6 59.5 L117.2 62.1 L116.8 64.6 L116.3 67.2 L115.8 69.6 L115.3 72.1 L114.8 74.4 L114.2 76.7 L113.8 78.6 L114.6 77.5 L115.5 76.4 L116.4 75.2 L117.3 74.0 L118.2 72.9 L119.2 71.7 L119.3 72.4 L119.1 73.7 L120.2 72.3 L121.4 70.9 L122.6 69.4 L123.4 69.0 L122.8 70.8 L122.3 72.6 L121.8 74.3 L121.2 76.0 L120.6 77.7 L120.0 79.3 L119.4 80.9 L120.6 79.7 L122.0 78.1 L123.4 76.6 L124.9 75.1 L126.4 73.5 L128.0 72.0 L129.7 70.4 L131.3 68.9 L133.1 67.3 L134.8 65.8 L135.3 66.0 L134.3 68.1 L133.2 70.2 L132.2 72.2 L131.6 73.7 L132.6 73.1 L133.6 72.6 L134.7 72.1 L135.7 71.6 L136.8 71.1 L137.9 70.7 L139.0 70.2 L140.1 69.8 L141.2 69.3 L142.3 68.9 L143.5 68.5 L144.7 68.1 L145.8 67.7 L147.0 67.4 L148.2 67.0 L149.4 66.7 L150.7 66.4 L151.9 66.1 L153.2 65.8 L154.4 65.5 L155.7 65.2 L157.0 65.0 L158.3 64.8 L159.6 64.6 L160.9 64.4 L162.3 64.2 L163.6 64.1 L165.0 63.9 L166.3 63.8 L165.8 65.1 L165.3 66.3 L164.7 67.5 L164.1 68.8 L163.5 70.0 L162.9 71.1 L162.3 72.3 L161.7 73.5 L161.0 74.6 L160.4 75.7 L159.7 76.8 L159.1 77.9 L158.4 79.0 L157.7 80.0 L157.0 81.1 L156.3 82.1 L155.5 83.1 L154.8 84.1 L154.1 85.0 L153.3 86.0 L152.5 86.9 L151.8 87.9 L151.0 88.8 L150.2 89.6 L149.4 90.5 L148.6 91.4 L147.8 92.2 L147.0 93.0 L146.2 93.8 L147.8 93.7 L150.0 93.3 L152.3 93.0 L154.6 92.7 L154.7 93.2 L152.7 94.4 L150.7 95.5 L148.7 96.6 L146.7 97.7 L144.8 98.7 L142.8 99.7 L140.9 100.7 L139.0 101.6 L137.1 102.4 L135.3 103.2 L133.5 104.0 L132.3 104.5 L131.5 105.0 L132.2 105.2 L133.5 105.2 L134.9 105.2 L136.3 105.3 L137.7 105.3 L139.2 105.4 L140.6 105.6 L142.1 105.7 L143.6 105.9 L144.3 106.2 L142.9 106.7 L141.5 107.3 L140.1 107.8 L138.7 108.3 L137.3 108.7 L136.0 109.2 L134.7 109.6 L133.4 110.0 L132.1 110.3 L130.9 110.7 L129.7 111.0 L128.8 111.2 L129.1 111.5 L129.4 111.7 L129.7 112.0 L130.0 112.3 L130.3 112.5 L130.6 112.8 L130.7 113.1 L130.4 113.3 L130.1 113.6 L129.7 113.8 L129.4 114.1 L129.1 114.3 L128.8 114.5 L129.2 114.8 L129.9 115.1 L130.7 115.5 L131.5 115.9 L132.3 116.3 L133.1 116.7 L134.0 117.1 L134.8 117.5 L135.6 118.0 L136.5 118.4 L137.3 118.9 L138.2 119.4 L139.1 119.9 L139.0 120.3 L138.0 120.4 L137.2 120.6 L137.7 121.1 L138.2 121.5 L138.8 122.0 L139.3 122.5 L139.9 123.1 L140.4 123.6 L141.0 124.1 L141.5 124.7 L142.0 125.2 L142.5 125.8 L143.1 126.4 L143.6 127.0 L144.1 127.6 L144.6 128.2 L145.1 128.9 L145.6 129.5 L146.1 130.2 L146.6 130.8 L147.1 131.5 L147.6 132.2 L148.1 132.9 L148.5 133.6 L149.0 134.3 L149.4 135.1 L149.9 135.8 L150.3 136.5 L149.5 136.7 L148.6 136.8 L147.8 136.9 L146.9 136.9 L146.1 137.0 L145.2 137.1 L144.4 137.1 L143.5 137.1 L142.7 137.2 L141.9 137.2 L141.1 137.2 L140.3 137.2 L139.5 137.1 L138.7 137.1 L137.9 137.1 L137.1 137.0 L136.3 137.0 L135.5 136.9 L134.8 136.8 L134.0 136.7 L133.3 136.6 L132.5 136.5 L131.8 136.4 L131.1 136.3 L130.3 136.1 L129.6 136.0 L130.0 136.7 L130.5 137.6 L130.3 137.9 L129.4 137.5 L128.4 137.2 L127.5 136.8 L126.6 136.4 L125.8 136.0 L124.9 135.6 L124.1 135.2 L123.2 134.8 L122.4 134.4 L121.7 134.1 L120.9 133.7 L120.2 133.3 L119.7 133.1 L119.7 133.5 L119.7 133.9 L119.7 134.3 L119.7 134.7 L119.7 135.1 L119.7 135.5 L119.5 135.6 L119.1 135.5 L118.7 135.5 L118.3 135.4 L117.9 135.3 L117.5 135.2 L117.1 135.1 L116.8 135.1 L116.4 135.0 L116.0 134.9 L115.7 134.8 L115.4 134.8 L115.0 134.7 L114.7 134.7 L114.5 134.8 L114.3 134.9 L114.1 135.0 L113.9 135.1 L113.7 135.3 L113.5 135.4 L113.3 135.5 L113.1 135.6 L112.9 135.7 L112.7 135.8 L112.5 135.9 L112.3 136.1 L112.0 136.2 L111.8 136.3 L111.6 136.4 L111.4 136.5 L111.2 136.6 L111.0 136.7 L110.8 136.8 L110.5 136.9 L110.3 136.9 L110.1 137.0 L109.9 137.1 L109.7 137.2 L109.5 137.3 L109.2 137.4 L109.0 137.5 L108.8 137.5 L108.6 137.6 L108.3 137.7 L108.1 137.8 L107.9 137.8 L107.7 137.9 L107.4 138.0 L107.2 138.0 L107.0 138.1 L106.8 138.1 L106.5 138.2 L106.3 138.3 L106.1 138.3 L105.8 138.4 L105.6 138.4 L105.4 138.5 L105.2 138.5 L104.9 138.5 L104.7 138.6 L104.5 138.6 L104.2 138.7 L104.0 138.7 L103.8 138.7 L102.0 126.9 L101.8 126.9 L101.7 126.9 L101.6 126.9 L101.4 126.9 L101.3 126.9 L101.2 127.0 L101.0 127.0 L100.9 127.0 L100.8 127.0 L100.7 127.0 L100.5 127.0 L100.4 127.0 L100.3 127.0 L100.1 127.0 L100.0 127.0 L99.9 127.0 L99.7 127.0 L99.6 127.0 L99.5 127.0 L99.3 127.0 L99.2 127.0 L99.1 127.0 L99.0 127.0 L98.8 127.0 L98.7 126.9 L98.6 126.9 L98.4 126.9 L98.3 126.9 L98.2 126.9 L98.0 126.9 L96.2 138.7 L96.0 138.7 L95.8 138.7 L95.5 138.6 L95.3 138.6 L95.1 138.5 L94.8 138.5 L94.6 138.5 L94.4 138.4 L94.2 138.4 L93.9 138.3 L93.7 138.3 L93.5 138.2 L93.2 138.1 L93.0 138.1 L92.8 138.0 L92.6 138.0 L92.3 137.9 L92.1 137.8 L91.9 137.8 L91.7 137.7 L91.4 137.6 L91.2 137.5 L91.0 137.5 L90.8 137.4 L90.5 137.3 L90.3 137.2 L90.1 137.1 L89.9 137.0 L89.7 136.9 L89.5 136.9 L89.2 136.8 L89.0 136.7 L88.8 136.6 L88.6 136.5 L88.4 136.4 L88.2 136.3 L88.0 136.2 L87.7 136.1 L87.5 135.9 L87.3 135.8 L87.1 135.7 L86.9 135.6 L86.7 135.5 L86.5 135.4 L86.3 135.3 L86.1 135.1 L85.9 135.0 L85.7 134.9 L85.5 134.8 L85.3 134.7 L85.0 134.7 L84.6 134.8 L84.3 134.8 L84.0 134.9 L83.6 135.0 L83.2 135.1 L82.9 135.1 L82.5 135.2 L82.1 135.3 L81.7 135.4 L81.3 135.5 L80.9 135.5 L80.5 135.6 L80.3 135.5 L80.3 135.1 L80.3 134.7 L80.3 134.3 L80.3 133.9 L80.3 133.5 L80.3 133.1 L79.8 133.3 L79.1 133.7 L78.3 134.1 L77.6 134.4 L76.8 134.8 L75.9 135.2 L75.1 135.6 L74.2 136.0 L73.4 136.4 L72.5 136.8 L71.6 137.2 L70.6 137.5 L69.7 137.9 L69.5 137.6 L70.0 136.7 L70.4 136.0 L69.7 136.1 L68.9 136.3 L68.2 136.4 L67.5 136.5 L66.7 136.6 L66.0 136.7 L65.2 136.8 L64.5 136.9 L63.7 137.0 L62.9 137.0 L62.1 137.1 L61.3 137.1 L60.5 137.1 L59.7 137.2 L58.9 137.2 L58.1 137.2 L57.3 137.2 L56.5 137.1 L55.6 137.1 L54.8 137.1 L53.9 137.0 L53.1 136.9 L52.2 136.9 L51.4 136.8 L50.5 136.7 L49.7 136.5 L50.1 135.8 L50.6 135.1 L51.0 134.3 L51.5 133.6 L51.9 132.9 L52.4 132.2 L52.9 131.5 L53.4 130.8 L53.9 130.2 L54.4 129.5 L54.9 128.9 L55.4 128.2 L55.9 127.6 L56.4 127.0 L56.9 126.4 L57.5 125.8 L58.0 125.2 L58.5 124.7 L59.0 124.1 L59.6 123.6 L60.1 123.1 L60.7 122.5 L61.2 122.0 L61.8 121.5 L62.3 121.1 L62.8 120.6 L62.0 120.4 L61.0 120.3 L60.9 119.9 L61.8 119.4 L62.7 118.9 L63.5 118.4 L64.4 118.0 L65.2 117.5 L66.0 117.1 L66.9 116.7 L67.7 116.3 L68.5 115.9 L69.3 115.5 L70.1 115.1 L70.8 114.8 L71.2 114.5 L70.9 114.3 L70.6 114.1 L70.3 113.8 L69.9 113.6 L69.6 113.3 L69.3 113.1 L69.4 112.8 L69.7 112.5 L70.0 112.3 Z" fill="url(#mapleLight)"/>
+    <path d="M100 118 L100.0 29.2 M100 118 L161.0 67.7 M100 118 L39.0 67.7 M100 118 L146.3 134.6 M100 118 L53.7 134.6 " stroke="#8a3216" stroke-width="1.6" fill="none" stroke-linecap="round" opacity=".8"/>
+    <path d="M100.0 71.5 L86.8 56.8 M100.0 71.5 L113.2 56.8 M100.0 50.8 L86.8 36.1 M100.0 50.8 L113.2 36.1 M129.9 90.3 L133.6 72.7 M129.9 90.3 L147.8 92.2 M145.1 79.2 L148.9 61.6 M145.1 79.2 L163.1 81.1 M70.1 90.3 L52.2 92.2 M70.1 90.3 L66.4 72.7 M54.9 79.2 L36.9 81.1 M54.9 79.2 L51.1 61.6 M122.6 123.0 L134.5 119.7 M122.6 123.0 L127.3 134.5 M134.2 128.7 L146.1 125.3 M134.2 128.7 L138.8 140.1 M77.4 123.0 L72.7 134.5 M77.4 123.0 L65.5 119.7 M65.8 128.7 L61.2 140.1 M65.8 128.7 L53.9 125.3 " stroke="#9a3c1a" stroke-width=".9" fill="none" stroke-linecap="round" opacity=".55"/>
+  </svg>
+
+  <div class="back"></div><div class="side l"></div>
+  <div class="pg r"></div><div class="pg t"></div><div class="pg b"></div>
+  <div class="bb r"></div><div class="bb t"></div><div class="bb b"></div>
+  <div class="fb r"></div><div class="fb t"></div><div class="fb b"></div>
+  <article class="page" aria-label="A page of the Quillow diary">
+    <div class="fore"></div>
+    <!-- The tabs on the edge, as in the app: the diary, then its sections. Each opens an example page. -->
+    <nav class="tabs reveal" style="transition-delay:.2s" aria-label="Sections">
+      <button class="tab on" data-tab="diary" style="--tone:#661F27" aria-label="Diary"><span class="vname">Quillow</span></button>
+      <button class="tab" data-tab="todo" style="--tone:#CCB88F" aria-label="To do">
+        <svg viewBox="0 0 24 24"><circle cx="6" cy="7" r="2.6"/><path d="M4.8 7.1l1 1 1.8-2.2"/><circle cx="6" cy="17" r="2.6"/><path d="M11 7h9M11 17h9"/></svg></button>
+      <button class="tab" data-tab="films" style="--tone:#C9A16B" aria-label="Films">
+        <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="1.5"/><path d="M7 5v14M17 5v14M3 9h4M3 15h4M17 9h4M17 15h4"/></svg></button>
+      <button class="tab" data-tab="books" style="--tone:#9EB08A" aria-label="Books">
+        <svg viewBox="0 0 24 24"><path d="M6 3.5h11.5v15H7a2 2 0 0 0-2 2V5a1.5 1.5 0 0 1 1-1.5z"/><path d="M5 20.5A1.5 1.5 0 0 0 6.5 22h11v-3.5"/></svg></button>
+      <button class="tab" data-tab="places" style="--tone:#8FA6BF" aria-label="Places">
+        <svg viewBox="0 0 24 24"><path d="M12 21s-6-6.2-6-11a6 6 0 0 1 12 0c0 4.8-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg></button>
+      <button class="tab" data-tab="people" style="--tone:#C499A6" aria-label="People">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M5 20.5c.8-4 3.6-6 7-6s6.2 2 7 6"/></svg></button>
+      <button class="tab" data-tab="wishes" style="--tone:#D1B370" aria-label="I want to">
+        <svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/></svg></button>
+    </nav>
+
+    <header class="date">
+      <div id="dayHead">
+        <div class="weekday" id="weekday">Today</div>
+        <div class="day" id="today"></div>
+      </div>
+      <div id="sectHead" hidden>
+        <div class="weekday" id="sectEyebrow"></div>
+        <div class="day" id="sectTitle"></div>
+      </div>
+      <button class="close" id="close" aria-label="Close the diary" title="Close the diary">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M5 4.5A1.5 1.5 0 0 1 6.5 3H19v15H6.5A1.5 1.5 0 0 0 5 19.5z"/><path d="M5 19.5A1.5 1.5 0 0 0 6.5 21H19v-3"/>
+        </svg>
+      </button>
+    </header>
+
+    <!-- Today's page -->
+    <div class="sheet on ruled" data-sheet="diary">
+      <figure class="appicon reveal" style="transition-delay:.15s">
+        <a href="https://apps.apple.com/app/id6801047846" aria-label="Get Quillow on the App Store">
+          <div class="tile"><img src="icon-512.png" alt="Quillow's icon: a quill resting on a pillow under the moon"></div>
+          <figcaption>Quillow</figcaption>
+        </a>
+      </figure>
+      <p class="reveal" style="transition-delay:.35s">Today I found Quillow — a cozy, private diary for iPhone and Mac.</p>
+      <p class="reveal" style="transition-delay:.7s">A paper page for every day: words, photos, a song, a place.</p>
+      <p class="reveal" style="transition-delay:1.05s">It stays on my device, or in my own iCloud. No accounts, no ads, no tracking.</p>
+      <p class="reveal" style="transition-delay:1.4s">I pick the paper, the ink and a little weather on the page — and just write.</p>
+      <div class="gap"></div>
+      <p class="reveal" style="transition-delay:1.75s"><a href="https://apps.apple.com/app/id6801047846">Get Quillow on the App Store →</a></p>
+    </div>
+
+    <!-- To do: hand-drawn circles, a done one struck through and softened -->
+    <div class="sheet ruled" data-sheet="todo">
+      <p class="todo"><i class="ring"></i>Call grandma <span class="when">Sun</span></p>
+      <p class="todo"><i class="ring"></i>Book the train to Turku <span class="when">Fri · 9:00</span></p>
+      <p class="todo"><i class="ring"></i>Buy oat milk and lemons</p>
+      <p class="todo done"><i class="ring"></i>Water the basil</p>
+      <p class="todo"><i class="ring"></i>Finish the green scarf</p>
+      <p class="todo done"><i class="ring"></i>Return the library book</p>
+      <div class="gap"></div>
+      <p class="aside">A gentle reminder, if you want one — never a nag.</p>
+    </div>
+
+    <!-- Films: the app's list (made-up titles) -->
+    <div class="sheet" data-sheet="films">
+      <div class="rowlist"><div class="switch"><b>Watched</b><small>4</small><span>·</span><em>Want to watch</em><small>3</small></div><div class="crow"><div class="thumb photo pix"><img src="img/films_harbour.png" alt="A lighthouse at night" loading="lazy"></div><div class="cbody"><div class="ctop"><span class="ctitle">The Quiet Harbour</span><span class="stars"><i class="on">★</i><i class="on">★</i><i class="on">★</i><i class="on">★</i><i class="on">★</i></span></div><div class="meta">3 Oct 2026 · Anna</div><div class="preview">I cried at the end, and then we walked home in the rain.</div></div></div><div class="crow"><div class="thumb photo pix"><img src="img/films_moons.png" alt="A crescent moon over rooftops" loading="lazy"></div><div class="cbody"><div class="ctop"><span class="ctitle">Paper Moons</span><span class="stars"><i class="on">★</i><i class="on">★</i><i class="on">★</i><i class="on">★</i><i>★</i></span></div><div class="meta">21 Sep 2026</div><div class="preview">The music stayed with me all week.</div></div></div><div class="crow"><div class="thumb photo pix"><img src="img/films_lapland.png" alt="A snowy cabin among pines" loading="lazy"></div><div class="cbody"><div class="ctop"><span class="ctitle">A Winter in Lapland</span><span class="stars"><i class="on">★</i><i class="on">★</i><i class="on">★</i><i class="on">★</i><i>★</i></span></div><div class="meta">14 Sep 2026 · Mum</div><div class="preview">Want to see it again in December.</div></div></div><div class="crow"><div class="thumb photo pix"><img src="img/films_hours.png" alt="A window at night with a lamp" loading="lazy"></div><div class="cbody"><div class="ctop"><span class="ctitle">Small Hours</span><span class="stars"><i class="on">★</i><i class="on">★</i><i class="on">★</i><i>★</i><i>★</i></span></div><div class="meta">2 Sep 2026</div><div class="preview">Slow, but so beautiful.</div></div></div></div>
+    </div>
+
+    <!-- Books -->
+    <div class="sheet" data-sheet="books">
+      <div class="rowlist"><div class="switch"><b>Read</b><small>4</small><span>·</span><em>Want to read</em><small>2</small></div><div class="crow"><div class="thumb photo pix"><img src="img/books_lighthouse.png" alt="A green cloth book with a lighthouse" loading="lazy"></div><div class="cbody"><div class="ctop"><span class="ctitle">The Lighthouse Keeper’s Year</span><span class="stars"><i class="on">★</i><i class="on">★</i><i class="on">★</i><i class="on">★</i><i class="on">★</i></span></div><div class="meta">12 Oct 2026 · M. Ellery</div><div class="preview">Read it in two evenings by the window.</div></div></div><div class="crow"><div class="thumb photo pix"><img src="img/books_letters.png" alt="A rust cloth book with an envelope on the waves" loading="lazy"></div><div class="cbody"><div class="ctop"><span class="ctitle">Letters to the Sea</span><span class="stars"><i class="on">★</i><i class="on">★</i><i class="on">★</i><i class="on">★</i><i>★</i></span></div><div class="meta">27 Sep 2026 · J. Moreau</div><div class="preview">Page 112 — I want to keep that sentence.</div></div></div><div class="crow"><div class="thumb photo pix"><img src="img/books_room.png" alt="A plum cloth book with a lamp and a plant" loading="lazy"></div><div class="cbody"><div class="ctop"><span class="ctitle">A Room of Quiet Things</span><span class="stars"><i class="on">★</i><i class="on">★</i><i class="on">★</i><i class="on">★</i><i>★</i></span></div><div class="meta">9 Sep 2026 · L. Aho</div><div class="preview">Gentle, like tea in the afternoon.</div></div></div><div class="crow"><div class="thumb photo pix"><img src="img/books_bread.png" alt="A mustard cloth book with a loaf under the snow" loading="lazy"></div><div class="cbody"><div class="ctop"><span class="ctitle">Bread &amp; Snow</span><span class="stars"><i class="on">★</i><i class="on">★</i><i class="on">★</i><i>★</i><i>★</i></span></div><div class="meta">30 Aug 2026 · K. Lind</div><div class="preview">The recipes! Baked the rye one on Sunday.</div></div></div></div>
+    </div>
+
+    <!-- Places -->
+    <div class="sheet" data-sheet="places">
+      <div class="rowlist"><div class="switch"><b>Visited</b><small>3</small><span>·</span><em>Want to go</em><small>2</small></div><div class="crow"><div class="thumb photo"><img src="img/porvoo.jpg" alt="Porvoo: red riverside houses" loading="lazy"></div><div class="cbody"><div class="ctop"><span class="ctitle">Old Town</span><span class="stars"><i class="on">★</i><i class="on">★</i><i class="on">★</i><i class="on">★</i><i class="on">★</i></span></div><div class="meta">14 Jun 2026 · Porvoo · 🇫🇮</div><div class="preview">Red houses by the river, and the best cinnamon buns.</div></div></div><div class="crow"><div class="thumb photo"><img src="img/lisbon.jpg" alt="Lisbon: tiled terrace over Alfama" loading="lazy"></div><div class="cbody"><div class="ctop"><span class="ctitle">Alfama</span><span class="stars"><i class="on">★</i><i class="on">★</i><i class="on">★</i><i class="on">★</i><i class="on">★</i></span></div><div class="meta">22 Apr 2026 · Lisbon · 🇵🇹</div><div class="preview">Trams, tiles and the sea at the end of every street.</div></div></div><div class="crow"><div class="thumb photo"><img src="img/tallinn.jpg" alt="Tallinn harbour at dusk" loading="lazy"></div><div class="cbody"><div class="ctop"><span class="ctitle">The harbour</span><span class="stars"><i class="on">★</i><i class="on">★</i><i class="on">★</i><i class="on">★</i><i>★</i></span></div><div class="meta">3 Mar 2026 · Tallinn · 🇪🇪</div><div class="preview">A day by ferry, a windy one.</div></div></div></div>
+    </div>
+
+    <!-- People: little pixel portraits, drawn here (made-up people) -->
+    <div class="sheet" data-sheet="people">
+      <div class="rowlist"><div class="crow"><div class="thumb soft pixel"><svg viewBox="0 0 11 16" preserveAspectRatio="xMidYMax slice" shape-rendering="crispEdges" aria-hidden="true"><rect width="11" height="16" fill="#F1D9DC"/><rect x="4" y="1" width="3" height="1" fill="#6B4226"/><rect x="2" y="2" width="7" height="1" fill="#6B4226"/><rect x="2" y="3" width="1" height="1" fill="#6B4226"/><rect x="3" y="3" width="5" height="1" fill="#F2C9A6"/><rect x="8" y="3" width="1" height="1" fill="#6B4226"/><rect x="2" y="4" width="1" height="1" fill="#6B4226"/><rect x="3" y="4" width="1" height="1" fill="#F2C9A6"/><rect x="4" y="4" width="1" height="1" fill="#2E2A2A"/><rect x="5" y="4" width="1" height="1" fill="#F2C9A6"/><rect x="6" y="4" width="1" height="1" fill="#2E2A2A"/><rect x="7" y="4" width="1" height="1" fill="#F2C9A6"/><rect x="8" y="4" width="1" height="1" fill="#6B4226"/><rect x="2" y="5" width="1" height="1" fill="#6B4226"/><rect x="3" y="5" width="1" height="1" fill="#EBA59A"/><rect x="4" y="5" width="3" height="1" fill="#F2C9A6"/><rect x="7" y="5" width="1" height="1" fill="#EBA59A"/><rect x="8" y="5" width="1" height="1" fill="#6B4226"/><rect x="2" y="6" width="1" height="1" fill="#6B4226"/><rect x="3" y="6" width="1" height="1" fill="#F2C9A6"/><rect x="4" y="6" width="3" height="1" fill="#D39C88"/><rect x="7" y="6" width="1" height="1" fill="#F2C9A6"/><rect x="8" y="6" width="1" height="1" fill="#6B4226"/><rect x="2" y="7" width="1" height="1" fill="#6B4226"/><rect x="3" y="7" width="5" height="1" fill="#F2C9A6"/><rect x="8" y="7" width="1" height="1" fill="#6B4226"/><rect x="2" y="8" width="2" height="1" fill="#6B4226"/><rect x="4" y="8" width="3" height="1" fill="#F2C9A6"/><rect x="7" y="8" width="2" height="1" fill="#6B4226"/><rect x="2" y="9" width="2" height="1" fill="#6B4226"/><rect x="4" y="9" width="3" height="1" fill="#F2C9A6"/><rect x="7" y="9" width="2" height="1" fill="#6B4226"/><rect x="2" y="10" width="1" height="1" fill="#6B4226"/><rect x="3" y="10" width="5" height="1" fill="#C46E80"/><rect x="8" y="10" width="1" height="1" fill="#6B4226"/><rect x="1" y="11" width="9" height="1" fill="#C46E80"/><rect x="1" y="12" width="9" height="1" fill="#C46E80"/><rect x="1" y="13" width="9" height="1" fill="#C46E80"/><rect x="1" y="14" width="9" height="1" fill="#C46E80"/><rect x="1" y="15" width="9" height="1" fill="#C46E80"/></svg></div><div class="cbody"><div class="ctop"><span class="ctitle">Anna</span><span class="heart">♥</span></div><div class="meta">3 Nov · friend</div><div class="preview">The one who always brings soup.</div></div></div><div class="crow"><div class="thumb soft pixel"><svg viewBox="0 0 11 16" preserveAspectRatio="xMidYMax slice" shape-rendering="crispEdges" aria-hidden="true"><rect width="11" height="16" fill="#D8E4EA"/><rect x="3" y="2" width="5" height="1" fill="#C9C3B8"/><rect x="2" y="3" width="7" height="1" fill="#C9C3B8"/><rect x="2" y="4" width="1" height="1" fill="#C9C3B8"/><rect x="3" y="4" width="5" height="1" fill="#EBC3A0"/><rect x="8" y="4" width="1" height="1" fill="#C9C3B8"/><rect x="2" y="5" width="1" height="1" fill="#C9C3B8"/><rect x="3" y="5" width="1" height="1" fill="#A3876F"/><rect x="4" y="5" width="1" height="1" fill="#2E2A2A"/><rect x="5" y="5" width="1" height="1" fill="#A3876F"/><rect x="6" y="5" width="1" height="1" fill="#2E2A2A"/><rect x="7" y="5" width="1" height="1" fill="#A3876F"/><rect x="8" y="5" width="1" height="1" fill="#C9C3B8"/><rect x="2" y="6" width="1" height="1" fill="#C9C3B8"/><rect x="3" y="6" width="1" height="1" fill="#E6A08F"/><rect x="4" y="6" width="3" height="1" fill="#EBC3A0"/><rect x="7" y="6" width="1" height="1" fill="#E6A08F"/><rect x="8" y="6" width="1" height="1" fill="#C9C3B8"/><rect x="2" y="7" width="1" height="1" fill="#C9C3B8"/><rect x="3" y="7" width="1" height="1" fill="#EBC3A0"/><rect x="4" y="7" width="3" height="1" fill="#CB9A84"/><rect x="7" y="7" width="1" height="1" fill="#EBC3A0"/><rect x="8" y="7" width="1" height="1" fill="#C9C3B8"/><rect x="3" y="8" width="5" height="1" fill="#EBC3A0"/><rect x="4" y="9" width="3" height="1" fill="#EBC3A0"/><rect x="3" y="10" width="1" height="1" fill="#5F8A6A"/><rect x="4" y="10" width="3" height="1" fill="#F4F1EA"/><rect x="7" y="10" width="1" height="1" fill="#5F8A6A"/><rect x="2" y="11" width="3" height="1" fill="#5F8A6A"/><rect x="5" y="11" width="1" height="1" fill="#F4F1EA"/><rect x="6" y="11" width="3" height="1" fill="#5F8A6A"/><rect x="1" y="12" width="4" height="1" fill="#5F8A6A"/><rect x="5" y="12" width="1" height="1" fill="#F4F1EA"/><rect x="6" y="12" width="4" height="1" fill="#5F8A6A"/><rect x="1" y="13" width="4" height="1" fill="#5F8A6A"/><rect x="5" y="13" width="1" height="1" fill="#F4F1EA"/><rect x="6" y="13" width="4" height="1" fill="#5F8A6A"/><rect x="1" y="14" width="9" height="1" fill="#5F8A6A"/><rect x="1" y="15" width="9" height="1" fill="#5F8A6A"/></svg></div><div class="cbody"><div class="ctop"><span class="ctitle">Mum</span><span class="heart">♥</span></div><div class="meta">12 Mar · mum</div><div class="preview">Calls every Sunday. Remember the garden.</div></div></div><div class="crow"><div class="thumb soft pixel"><svg viewBox="0 0 11 16" preserveAspectRatio="xMidYMax slice" shape-rendering="crispEdges" aria-hidden="true"><rect width="11" height="16" fill="#DCE6D3"/><rect x="3" y="1" width="1" height="1" fill="#2B2420"/><rect x="5" y="1" width="1" height="1" fill="#2B2420"/><rect x="7" y="1" width="1" height="1" fill="#2B2420"/><rect x="2" y="2" width="7" height="1" fill="#2B2420"/><rect x="2" y="3" width="7" height="1" fill="#2B2420"/><rect x="2" y="4" width="1" height="1" fill="#2B2420"/><rect x="3" y="4" width="5" height="1" fill="#D7A47C"/><rect x="8" y="4" width="1" height="1" fill="#2B2420"/><rect x="3" y="5" width="1" height="1" fill="#D7A47C"/><rect x="4" y="5" width="1" height="1" fill="#1F1B1A"/><rect x="5" y="5" width="1" height="1" fill="#D7A47C"/><rect x="6" y="5" width="1" height="1" fill="#1F1B1A"/><rect x="7" y="5" width="1" height="1" fill="#D7A47C"/><rect x="3" y="6" width="5" height="1" fill="#D7A47C"/><rect x="3" y="7" width="1" height="1" fill="#D7A47C"/><rect x="4" y="7" width="3" height="1" fill="#B07E62"/><rect x="7" y="7" width="1" height="1" fill="#D7A47C"/><rect x="4" y="8" width="3" height="1" fill="#D7A47C"/><rect x="3" y="9" width="5" height="1" fill="#4F6FA0"/><rect x="2" y="10" width="7" height="1" fill="#4F6FA0"/><rect x="1" y="11" width="3" height="1" fill="#4F6FA0"/><rect x="4" y="11" width="1" height="1" fill="#F4F1EA"/><rect x="5" y="11" width="1" height="1" fill="#4F6FA0"/><rect x="6" y="11" width="1" height="1" fill="#F4F1EA"/><rect x="7" y="11" width="3" height="1" fill="#4F6FA0"/><rect x="1" y="12" width="3" height="1" fill="#4F6FA0"/><rect x="4" y="12" width="1" height="1" fill="#F4F1EA"/><rect x="5" y="12" width="1" height="1" fill="#4F6FA0"/><rect x="6" y="12" width="1" height="1" fill="#F4F1EA"/><rect x="7" y="12" width="3" height="1" fill="#4F6FA0"/><rect x="1" y="13" width="9" height="1" fill="#4F6FA0"/><rect x="1" y="14" width="2" height="1" fill="#4F6FA0"/><rect x="3" y="14" width="5" height="1" fill="#3F5C88"/><rect x="8" y="14" width="2" height="1" fill="#4F6FA0"/><rect x="1" y="15" width="9" height="1" fill="#4F6FA0"/></svg></div><div class="cbody"><div class="ctop"><span class="ctitle">Leo</span></div><div class="meta">8 Jul · brother</div><div class="preview">We still laugh at the same things.</div></div></div><div class="crow"><div class="thumb soft pixel"><svg viewBox="0 0 11 16" preserveAspectRatio="xMidYMax slice" shape-rendering="crispEdges" aria-hidden="true"><rect width="11" height="16" fill="#F3E6C8"/><rect x="3" y="0" width="5" height="1" fill="#1E1A18"/><rect x="2" y="1" width="7" height="1" fill="#1E1A18"/><rect x="1" y="2" width="9" height="1" fill="#1E1A18"/><rect x="1" y="3" width="2" height="1" fill="#1E1A18"/><rect x="3" y="3" width="5" height="1" fill="#B67A55"/><rect x="8" y="3" width="2" height="1" fill="#1E1A18"/><rect x="1" y="4" width="2" height="1" fill="#1E1A18"/><rect x="3" y="4" width="1" height="1" fill="#B67A55"/><rect x="4" y="4" width="1" height="1" fill="#1A1513"/><rect x="5" y="4" width="1" height="1" fill="#B67A55"/><rect x="6" y="4" width="1" height="1" fill="#1A1513"/><rect x="7" y="4" width="1" height="1" fill="#B67A55"/><rect x="8" y="4" width="2" height="1" fill="#1E1A18"/><rect x="1" y="5" width="2" height="1" fill="#1E1A18"/><rect x="3" y="5" width="1" height="1" fill="#C98466"/><rect x="4" y="5" width="3" height="1" fill="#B67A55"/><rect x="7" y="5" width="1" height="1" fill="#C98466"/><rect x="8" y="5" width="2" height="1" fill="#1E1A18"/><rect x="1" y="6" width="1" height="1" fill="#1E1A18"/><rect x="2" y="6" width="1" height="1" fill="#E8C25A"/><rect x="3" y="6" width="1" height="1" fill="#B67A55"/><rect x="4" y="6" width="3" height="1" fill="#8F5A40"/><rect x="7" y="6" width="1" height="1" fill="#B67A55"/><rect x="8" y="6" width="1" height="1" fill="#E8C25A"/><rect x="9" y="6" width="1" height="1" fill="#1E1A18"/><rect x="1" y="7" width="2" height="1" fill="#1E1A18"/><rect x="3" y="7" width="5" height="1" fill="#B67A55"/><rect x="8" y="7" width="2" height="1" fill="#1E1A18"/><rect x="2" y="8" width="2" height="1" fill="#1E1A18"/><rect x="4" y="8" width="3" height="1" fill="#B67A55"/><rect x="7" y="8" width="2" height="1" fill="#1E1A18"/><rect x="3" y="9" width="1" height="1" fill="#1E1A18"/><rect x="4" y="9" width="3" height="1" fill="#B67A55"/><rect x="7" y="9" width="1" height="1" fill="#1E1A18"/><rect x="3" y="10" width="5" height="1" fill="#D9A441"/><rect x="1" y="11" width="9" height="1" fill="#D9A441"/><rect x="1" y="12" width="9" height="1" fill="#D9A441"/><rect x="1" y="13" width="9" height="1" fill="#D9A441"/><rect x="1" y="14" width="9" height="1" fill="#D9A441"/><rect x="1" y="15" width="9" height="1" fill="#D9A441"/></svg></div><div class="cbody"><div class="ctop"><span class="ctitle">Sofia</span></div><div class="meta">28 Jul · a friend from school</div><div class="preview">Our walks by the lake.</div></div></div></div>
+    </div>
+
+    <!-- I want to: a year board by the areas of life -->
+    <div class="sheet" data-sheet="wishes">
+      <div class="board">
+        <div class="area" style="--c:#7FA77A"><h3>Health</h3><p>Run a 10k</p><p>Sleep before midnight</p></div>
+        <div class="area" style="--c:#6E95BF"><h3>Travel</h3><p>See the northern lights</p><p>A week by the sea</p></div>
+        <div class="area" style="--c:#C98A9A"><h3>Love</h3><p>Write letters again</p></div>
+        <div class="area" style="--c:#C9A35B"><h3>Things</h3><p>A good fountain pen</p></div>
+      </div>
+    </div>
+
+    <footer class="links reveal" style="transition-delay:2s">
+      <a href="https://apps.apple.com/app/id6801047846">App Store</a><span>·</span><a href="privacy/">Privacy Policy</a><span>·</span><a href="mailto:denell.dev@gmail.com">Write to me</a><span>·</span>© 2026 Din Denell
+    </footer>
+  </article>
+
+  <div class="cover" id="cover" role="button" tabindex="0" aria-label="Open the diary">
+    <div class="cover-text">
+      <div class="cover-title">Quillow</div>
+      <div class="cover-sub"><span class="touch">tap to open</span><span class="mouse">click to open</span></div>
+    </div>
+  </div>
+</div>
+</div>
+<div class="fog"></div>
+</div>
+
+<script>
+  // Today's page: the weekday above, the date below — as on the diary's own first page.
+  (function () {
+    var now = new Date();
+    document.getElementById('weekday').textContent = now.toLocaleDateString('en-GB', { weekday: 'long' });
+    document.getElementById('today').textContent =
+      now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  })();
+
+  // The tabs: each turns to an example page of that section — only to look at.
+  (function () {
+    var titles = { todo: ['', 'To do'], films: ['My shelf', 'Films'], books: ['My shelf', 'Books'],
+                   places: ['Been & want to go', 'Places'], people: ['My people', 'People'], wishes: ['This year', 'I want to'] };
+    var tabs = document.querySelectorAll('.tab');
+    tabs.forEach(function (t) {
+      t.addEventListener('click', function () {
+        var key = t.getAttribute('data-tab');
+        tabs.forEach(function (o) { o.classList.toggle('on', o === t); });
+        document.querySelectorAll('.sheet').forEach(function (s) { s.classList.toggle('on', s.getAttribute('data-sheet') === key); });
+        var day = key === 'diary';
+        document.getElementById('dayHead').hidden = !day;
+        document.getElementById('sectHead').hidden = day;
+        if (!day) {
+          document.getElementById('sectEyebrow').textContent = titles[key][0] || '\u00a0';
+          document.getElementById('sectTitle').textContent = titles[key][1];
+        }
+      });
+    });
+  })();
+
+  // The cover opens by itself after a moment, or at once with a tap; the book in the corner shuts it.
+  (function () {
+    var world = document.getElementById('world');
+    var book = document.getElementById('book');
+    var cover = document.getElementById('cover');
+    var still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var timers = [];
+    var intro = true;           // the first approach — a tap then skips straight to an open book
+    function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
+    function clearAll() { timers.forEach(clearTimeout); timers = []; }
+    function near() { world.classList.remove('far'); }
+    function open() {
+      clearAll();
+      book.classList.remove('waiting');
+      if (intro || still || !world.classList.contains('far')) {
+        intro = false; near(); book.classList.add('open');
+      } else {
+        // Coming back to the desk's book: the camera leans in first, then the cover opens.
+        near(); later(function () { book.classList.add('open'); }, 1700);
+      }
+    }
+    function close() {
+      // The cover swings shut, then the camera draws back to the desk (Din, 28.10.2026).
+      clearAll();
+      intro = false;
+      book.classList.remove('open');
+      if (!still) { later(function () { world.classList.add('far'); }, 900); }
+      later(function () { book.classList.add('waiting'); }, still ? 0 : 2600);
+    }
+    cover.addEventListener('click', open);
+    cover.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
+    document.getElementById('close').addEventListener('click', close);
+    if (still) {
+      world.style.transition = 'none'; open();
+    } else {
+      // A breath on the desk, the camera comes close, a beat — and the cover opens.
+      later(near, 500);
+      later(function () { intro = false; book.classList.add('open'); }, 2700);
+    }
+  })();
+</script>
+</body>
+</html>
