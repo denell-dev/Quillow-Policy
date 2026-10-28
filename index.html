@@ -6,7 +6,7 @@
 <title>Quillow — a cozy, private diary for iPhone and Mac</title>
 <meta name="description" content="Quillow is a cozy, private diary for iPhone and Mac: a paper page for every day — words, photos, a song, a place. It stays on your device. No accounts, no ads, no tracking.">
 <meta name="apple-itunes-app" content="app-id=6801047846">
-<meta name="theme-color" content="#661F27">
+<meta name="theme-color" content="#3b2618">
 <meta property="og:title" content="Quillow — a cozy, private diary">
 <meta property="og:description" content="A paper page for every day — words, photos, a song, a place. It stays yours.">
 <meta property="og:image" content="https://quillowdiary.com/icon.png">
@@ -35,8 +35,12 @@
 }
 * { box-sizing:border-box; }
 html, body { margin:0; height:100%; }
-body { background:#3b2618; color:var(--ink); font-family:"Iowan Old Style", Georgia, "Times New Roman", serif;
+body { background:#3b2618; transition:background-color .6s ease; color:var(--ink); font-family:"Iowan Old Style", Georgia, "Times New Roman", serif;
        -webkit-font-smoothing:antialiased; overflow-x:hidden; }
+
+/* While the diary lies open, the browser's own bars (Safari tints them from the page's edges and
+   theme-color) take the page's paper, not the desk's wood (Din, 29.10.2026). */
+html.reading, html.reading body { background:var(--paper); }
 
 /* The window onto the desk: it clips the (much larger) desk, so the page doesn't scroll into it. */
 .view { position:relative; overflow:hidden; min-height:100svh; perspective:1600px; }
@@ -550,6 +554,14 @@ footer.links span { margin:0 7px; }
     function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
     function clearAll() { timers.forEach(clearTimeout); timers = []; }
     function near() { world.classList.remove('far'); }
+    var tint = document.querySelector('meta[name="theme-color"]');
+    function reading(on) {
+      document.documentElement.classList.toggle('reading', on);
+      var paper = getComputedStyle(document.documentElement).getPropertyValue('--paper').trim();
+      if (tint) tint.setAttribute('content', on ? paper : '#3b2618');
+    }
+    new MutationObserver(function () { reading(book.classList.contains('open')); })
+      .observe(book, { attributes: true, attributeFilter: ['class'] });
     function open() {
       clearAll();
       book.classList.remove('waiting');
