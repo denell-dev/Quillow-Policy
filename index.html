@@ -377,8 +377,10 @@ footer.links span { margin:0 7px; }
               align-items:center; justify-content:center; gap:12px; color:var(--cover-ink); text-align:center; }
 .cover-title { font-size:46px; font-weight:600; text-shadow:0 -1px 0 rgba(0,0,0,.55), 0 1px 0 rgba(255,255,255,.12); }
 /* What it is, under the name, as if printed beneath the title (Din, 29.10.2026). */
-.cover-kind { margin:-10px 0 14px; font-size:18px; font-style:italic; letter-spacing:.6px; opacity:.82;
+.cover-kind { margin:-8px 0 14px; font-size:21px; font-style:italic; letter-spacing:.6px; opacity:.9;
               text-shadow:0 -1px 0 rgba(0,0,0,.45); }
+/* On a phone the book on the desk is drawn small: larger, so it can be read from there (Din). */
+@media (max-width:759px) { .cover-kind { font-size:25px; margin-top:-6px; } }
 .cover-sub { font-size:15px; letter-spacing:3.5px; text-transform:uppercase; opacity:.75;
              animation:breathe 2.6s ease-in-out infinite; }
 @keyframes breathe { 0%,100% { opacity:.5; } 50% { opacity:.9; } }
