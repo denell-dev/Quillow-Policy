@@ -1,0 +1,20 @@
+User-agent: *
+Allow: /
+
+# AI assistants and their search: welcome (Din, 29.10.2026). Listed by name so it's plain
+# that they're invited, not just not forbidden.
+User-agent: GPTBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: ClaudeBot
+User-agent: Claude-SearchBot
+User-agent: Claude-User
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: Google-Extended
+User-agent: Applebot
+User-agent: Applebot-Extended
+User-agent: CCBot
+Allow: /
+
+Sitemap: https://quillowdiary.com/sitemap.xml

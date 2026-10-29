@@ -1,0 +1,21 @@
+# Quillow
+
+> Quillow is a cozy, private diary app for iPhone and Mac. Every day gets its own paper page for words, photos, a song and a place. The diary stays on the person's device, or in their own iCloud if they turn sync on. There are no accounts, no ads and no tracking. Free to download on the App Store, with an optional Quillow Plus subscription.
+
+What's in it:
+
+- A paper page for every day: writing, photos, a song, a place. You choose the paper, the ink and a little weather on the page.
+- Lists and gentle reminders, if you want them.
+- Films and books you've seen or read, or want to, with stars and a few words of your own.
+- Places you've been or want to go.
+- The people who matter, with birthday reminders.
+- Wishes, grouped by area of life.
+- "Write it, burn it": write out what you'd rather not keep, then burn it. It never goes into the diary, its backups or iCloud.
+
+Languages: English, Russian, Ukrainian, Spanish, Finnish, French.
+
+## Links
+
+- [Quillow on the App Store](https://apps.apple.com/app/id6801047846)
+- [Website](https://quillowdiary.com/)
+- [Privacy Policy](https://quillowdiary.com/privacy/)

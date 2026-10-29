@@ -11,6 +11,24 @@
 <meta property="og:description" content="A paper page for every day — words, photos, a song, a place. It stays yours.">
 <meta property="og:image" content="https://quillowdiary.com/icon.png">
 <meta property="og:url" content="https://quillowdiary.com/">
+<link rel="canonical" href="https://quillowdiary.com/">
+<!-- For search engines and AI assistants: what this site is about — the app, where to get it. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Quillow",
+  "alternateName": "Quillow — diary",
+  "description": "A cozy, private diary for iPhone and Mac: a paper page for every day — words, photos, a song, a place. It stays on your device or in your own iCloud. No accounts, no ads, no tracking.",
+  "url": "https://quillowdiary.com/",
+  "image": "https://quillowdiary.com/icon-512.png",
+  "applicationCategory": "LifestyleApplication",
+  "operatingSystem": "iOS, macOS",
+  "downloadUrl": "https://apps.apple.com/app/id6801047846",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "author": { "@type": "Person", "name": "Din Denell" }
+}
+</script>
 <link rel="icon" href="icon.png">
 <link rel="apple-touch-icon" href="icon.png">
 <script>
@@ -557,14 +575,13 @@ footer.links span { margin:0 7px; }
     });
   })();
 
-  // The cover opens by itself after a moment, or at once with a tap; the book in the corner shuts it.
+  // The cover opens with a tap or click; the book in the corner shuts it.
   (function () {
     var world = document.getElementById('world');
     var book = document.getElementById('book');
     var cover = document.getElementById('cover');
     var still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     var timers = [];
-    var intro = true;           // the first approach — a tap then skips straight to an open book
     function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
     function clearAll() { timers.forEach(clearTimeout); timers = []; }
     function near() { world.classList.remove('far'); }
@@ -579,17 +596,16 @@ footer.links span { margin:0 7px; }
     function open() {
       clearAll();
       book.classList.remove('waiting');
-      if (intro || still || !world.classList.contains('far')) {
-        intro = false; near(); book.classList.add('open');
+      if (still || !world.classList.contains('far')) {
+        near(); book.classList.add('open');
       } else {
-        // Coming back to the desk's book: the camera leans in first, then the cover opens.
+        // The book on the desk: the camera leans in first, then the cover opens.
         near(); later(function () { book.classList.add('open'); }, 1700);
       }
     }
     function close() {
       // The cover swings shut, then the camera draws back to the desk (Din, 28.10.2026).
       clearAll();
-      intro = false;
       book.classList.remove('open');
       if (!still) { later(function () { world.classList.add('far'); }, 900); }
       later(function () { book.classList.add('waiting'); }, still ? 0 : 2600);
@@ -597,13 +613,10 @@ footer.links span { margin:0 7px; }
     cover.addEventListener('click', open);
     cover.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
     document.getElementById('close').addEventListener('click', close);
-    if (still) {
-      world.style.transition = 'none'; open();
-    } else {
-      // A breath on the desk, the camera comes close, a beat — and the cover opens.
-      later(near, 500);
-      later(function () { intro = false; book.classList.add('open'); }, 2700);
-    }
+    // The diary waits on the desk until it's opened (Din, 29.10.2026: it used to open by itself):
+    // a tap or click brings the camera close, then the cover opens.
+    if (still) { world.style.transition = 'none'; }
+    later(function () { book.classList.add('waiting'); }, still ? 0 : 600);
   })();
 </script>
 </body>
