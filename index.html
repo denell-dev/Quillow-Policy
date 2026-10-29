@@ -376,6 +376,9 @@ footer.links span { margin:0 7px; }
 .cover-text { position:sticky; top:0; height:min(100%, 100svh); display:flex; flex-direction:column;
               align-items:center; justify-content:center; gap:12px; color:var(--cover-ink); text-align:center; }
 .cover-title { font-size:46px; font-weight:600; text-shadow:0 -1px 0 rgba(0,0,0,.55), 0 1px 0 rgba(255,255,255,.12); }
+/* What it is, under the name, as if printed beneath the title (Din, 29.10.2026). */
+.cover-kind { margin:-10px 0 14px; font-size:18px; font-style:italic; letter-spacing:.6px; opacity:.82;
+              text-shadow:0 -1px 0 rgba(0,0,0,.45); }
 .cover-sub { font-size:15px; letter-spacing:3.5px; text-transform:uppercase; opacity:.75;
              animation:breathe 2.6s ease-in-out infinite; }
 @keyframes breathe { 0%,100% { opacity:.5; } 50% { opacity:.9; } }
@@ -537,6 +540,7 @@ footer.links span { margin:0 7px; }
   <div class="cover" id="cover" role="button" tabindex="0" aria-label="Open the diary">
     <div class="cover-text">
       <div class="cover-title">Quillow</div>
+      <div class="cover-kind">Diary &amp; Journal</div>
       <div class="cover-sub"><span class="touch">tap to open</span><span class="mouse">click to open</span></div>
     </div>
   </div>
